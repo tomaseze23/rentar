@@ -25,6 +25,7 @@ public class SecurityConfig {
                                 "/swagger-resources/**",
                                 "/graphiql/**",
                                 "/graphql/**",
+                                "/api/vehiculos/**",
                                 "/error"
                         ).permitAll()
                         // El resto de los endpoints requerirán autenticación (para cuando sumen JWT)
