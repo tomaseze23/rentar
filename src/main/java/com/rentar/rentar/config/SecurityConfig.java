@@ -25,7 +25,10 @@ public class SecurityConfig {
                                 "/swagger-resources/**",
                                 "/graphiql/**",
                                 "/graphql/**",
-                                "/error"
+                                "/error",
+                                // TODO: sacar de la whitelist cuando se integre JWT.
+                                // Por ahora públicos para poder desarrollar/probar el ABM de clientes.
+                                "/api/clientes/**"
                         ).permitAll()
                         // El resto de los endpoints requerirán autenticación (para cuando sumen JWT)
                         .anyRequest().authenticated()
