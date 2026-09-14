@@ -18,6 +18,7 @@ public class VehiculoServiceImpl implements VehiculoService {
 
     @Override
     public Vehiculo crear(Vehiculo v) {
+        v.setId(null);
         if(repo.findByPatente(v.getPatente()).isPresent()){
             throw new IllegalArgumentException("la patente ya existe");
         }
