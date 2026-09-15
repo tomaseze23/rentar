@@ -25,6 +25,7 @@ public class SecurityConfig {
                                 "/swagger-resources/**",
                                 "/graphiql/**",
                                 "/graphql/**",
+                                "/api/vehiculos/**",
                                 "/error",
                                 // TODO: sacar de la whitelist cuando se integre JWT.
                                 // Por ahora públicos para poder desarrollar/probar el ABM de clientes.
