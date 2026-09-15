@@ -47,8 +47,11 @@ public class VehiculoServiceImpl implements VehiculoService {
     }
 
     @Override
-    public List<Vehiculo> listar(){
-        return repo.findAll();
+    public List<Vehiculo> listar(Boolean activo){
+        if (activo==null){
+            return repo.findAll();
+        }
+        return repo.findAll().stream().filter(v->v.getActivo().equals(activo)).toList();
     }
 
     @Override

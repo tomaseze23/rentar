@@ -10,7 +10,7 @@ public interface VehiculoService {
     Vehiculo crear(Vehiculo v);
     Vehiculo modificar(Long id, Vehiculo datos);
     void bajaLogica(Long id);
-    List<Vehiculo> listar();
+    List<Vehiculo> listar(Boolean activo);
     Vehiculo consultar(Long id);
 
 }

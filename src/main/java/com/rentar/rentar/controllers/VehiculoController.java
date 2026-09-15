@@ -34,8 +34,9 @@ public class VehiculoController {
     }
 
     @GetMapping
-    public ResponseEntity<List<Vehiculo>> listar() {
-        return ResponseEntity.ok(service.listar());
+    public ResponseEntity<List<Vehiculo>> listar(
+        @RequestParam(required = false)Boolean activo){
+        return ResponseEntity.ok(service.listar(activo));
     }
 
     @GetMapping("/{id}")
