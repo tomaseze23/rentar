@@ -1,3 +1,40 @@
 type Query {
     ping: String
+    clientes(incluirInactivos: Boolean = false): [Cliente!]!
+    cliente(id: ID!): Cliente
+}
+
+type Mutation {
+    crearCliente(input: ClienteInput!): Cliente!
+    actualizarCliente(id: ID!, input: ClienteUpdateInput!): Cliente!
+    eliminarCliente(id: ID!): Boolean!
+}
+
+type Cliente {
+    id: ID!
+    usuarioId: ID!
+    email: String!
+    documento: String!
+    nombre: String!
+    apellido: String!
+    telefono: String
+    fechaNacimiento: String
+    activo: Boolean!
+}
+
+input ClienteInput {
+    email: String!
+    password: String!
+    documento: String!
+    nombre: String!
+    apellido: String!
+    telefono: String
+    fechaNacimiento: String
+}
+
+input ClienteUpdateInput {
+    nombre: String!
+    apellido: String!
+    telefono: String
+    fechaNacimiento: String
 }
