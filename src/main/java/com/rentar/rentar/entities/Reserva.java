@@ -42,5 +42,5 @@ public class Reserva {
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
-    private EstadoVehiculo estado;
+    private EstadoReserva estado;
 }

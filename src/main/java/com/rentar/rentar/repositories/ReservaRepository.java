@@ -1,5 +1,6 @@
 package com.rentar.rentar.repositories;
 
+import com.rentar.rentar.entities.EstadoReserva;
 import com.rentar.rentar.entities.EstadoVehiculo;
 import com.rentar.rentar.entities.Reserva;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -23,6 +24,6 @@ public interface ReservaRepository extends JpaRepository<Reserva, Long> {
             @Param("vehiculoId") Long vehiculoId,
             @Param("fechaInicio") LocalDateTime fechaInicio,
             @Param("fechaFin") LocalDateTime fechaFin,
-            @Param("estado") EstadoVehiculo estado
+            @Param("estado") EstadoReserva estado
     );
 }

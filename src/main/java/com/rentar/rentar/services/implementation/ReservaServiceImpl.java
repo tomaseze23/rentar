@@ -6,7 +6,7 @@ import com.rentar.rentar.repositories.VehiculoRepository;
 import com.rentar.rentar.dtos.ReservaRequest;
 import com.rentar.rentar.dtos.ReservaResponse;
 import com.rentar.rentar.entities.Cliente;
-import com.rentar.rentar.entities.EstadoVehiculo;
+import com.rentar.rentar.entities.EstadoReserva;
 import com.rentar.rentar.entities.Reserva;
 import com.rentar.rentar.entities.Vehiculo;
 
@@ -78,7 +78,7 @@ public class ReservaServiceImpl implements ReservaService {
                 vehiculo.getId(),
                 request.getFechaInicio(),
                 request.getFechaFin(),
-                EstadoVehiculo.RESERVADO
+                EstadoReserva.CONFIRMADA
         );
 
         if (solapado) {
@@ -105,7 +105,7 @@ public class ReservaServiceImpl implements ReservaService {
         reserva.setFechaFin(request.getFechaFin());
         reserva.setPrecioDiario(BigDecimal.valueOf(vehiculo.getPrecioDiario()));
         reserva.setImporteTotal(importeTotal);
-        reserva.setEstado(EstadoVehiculo.RESERVADO);
+        reserva.setEstado(EstadoReserva.CONFIRMADA);
 
         Reserva reservaGuardada = reservaRepository.save(reserva);
 
