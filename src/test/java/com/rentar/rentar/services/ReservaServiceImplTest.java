@@ -4,7 +4,7 @@ package com.rentar.rentar.services;
 import com.rentar.rentar.dtos.ReservaRequest;
 import com.rentar.rentar.dtos.ReservaResponse;
 import com.rentar.rentar.entities.Cliente;
-import com.rentar.rentar.entities.EstadoVehiculo;
+import com.rentar.rentar.entities.EstadoReserva;
 import com.rentar.rentar.entities.Reserva;
 import com.rentar.rentar.entities.Vehiculo;
 import com.rentar.rentar.repositories.ClienteRepository;
@@ -70,7 +70,7 @@ class ReservaServiceImplTest {
 
         when(clienteRepository.findById(1L)).thenReturn(Optional.of(clienteActivo));
         when(vehiculoRepository.findById(2L)).thenReturn(Optional.of(vehiculoActivo));
-        when(reservaRepository.existsSolapamiento(eq(2L), any(), any(), eq(EstadoVehiculo.RESERVADO))).thenReturn(false);
+        when(reservaRepository.existsSolapamiento(eq(2L), any(), any(), eq(EstadoReserva.CONFIRMADA))).thenReturn(false);
         when(reservaRepository.save(any(Reserva.class))).thenAnswer(invocation -> {
             Reserva r = invocation.getArgument(0);
             r.setId(10L);
@@ -80,7 +80,7 @@ class ReservaServiceImplTest {
         ReservaResponse response = reservaService.crearReserva(request);
 
         assertNotNull(response);
-        assertEquals("RESERVADO", response.getEstado());
+        assertEquals("CONFIRMADA", response.getEstado());
         assertEquals(0, new BigDecimal("40000.00").compareTo(response.getImporteTotal())); // 20000 * 2 días
     }
 
