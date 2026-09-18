@@ -36,4 +36,17 @@ public class ReservaController {
         ReservaResponse nuevaReserva = reservaService.crearReserva(request);
         return ResponseEntity.status(HttpStatus.CREATED).body(nuevaReserva);
     }
+
+
+    @DeleteMapping("/{id}")
+    @Operation(summary = "Cancelar reserva",
+    description = "Cancela una reserva si el periodo aún no comenzó. No se elimina de la base: pasa a estado CANCELADA.")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Reserva cancelada correctamente"),
+            @ApiResponse(responseCode = "404", description = "Reserva no encontrada"),
+            @ApiResponse(responseCode = "409", description = "La reserva ya comenzó o ya estaba cancelada")
+    })
+    public ResponseEntity<ReservaResponse> cancelarReserva(@PathVariable Long id){
+        return ResponseEntity.ok(reservaService.cancelarReserva(id));
+    }
 }

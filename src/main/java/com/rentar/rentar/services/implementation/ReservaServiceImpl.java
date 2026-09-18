@@ -1,5 +1,6 @@
 package com.rentar.rentar.services.implementation;
 
+import com.rentar.rentar.exceptions.ResourceNotFoundException;
 import com.rentar.rentar.repositories.ClienteRepository;
 import com.rentar.rentar.repositories.ReservaRepository;
 import com.rentar.rentar.repositories.VehiculoRepository;
@@ -12,6 +13,7 @@ import com.rentar.rentar.entities.Vehiculo;
 
 import com.rentar.rentar.services.ReservaService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.cglib.core.Local;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -121,4 +123,42 @@ public class ReservaServiceImpl implements ReservaService {
                 reservaGuardada.getEstado().name()
         );
     }
+
+    @Override
+    @Transactional
+    public ReservaResponse cancelarReserva(Long id) {
+        // 1. La reserva debe existir
+        Reserva reserva = reservaRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        "Reserva no encontrada con ID: " + id));
+
+        // 2. No cancelar algo ya cancelado
+        if (reserva.getEstado() == EstadoReserva.CANCELADA) {
+            throw new ResponseStatusException(
+                    HttpStatus.CONFLICT, "La reserva ya se encuentra cancelada");
+        }
+
+        // 3. Solo si el período todavía no comenzó
+        if (!reserva.getFechaInicio().isAfter(LocalDateTime.now())) {
+            throw new ResponseStatusException(
+                    HttpStatus.CONFLICT, "No se puede cancelar una reserva cuyo período ya comenzó");
+        }
+
+        // 4. Baja lógica: cambia el estado, no se borra
+        reserva.setEstado(EstadoReserva.CANCELADA);
+        Reserva actualizada = reservaRepository.save(reserva);
+
+        // 5. DTO de respuesta
+        return new ReservaResponse(
+                actualizada.getId(),
+                actualizada.getCliente().getId(),
+                actualizada.getVehiculo().getId(),
+                actualizada.getFechaInicio(),
+                actualizada.getFechaFin(),
+                actualizada.getPrecioDiario(),
+                actualizada.getImporteTotal(),
+                actualizada.getEstado().name()
+        );
+    }
+
 }
