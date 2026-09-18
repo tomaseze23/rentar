@@ -26,6 +26,7 @@ public class SecurityConfig {
                                 "/graphiql/**",
                                 "/graphql/**",
                                 "/api/vehiculos/**",
+                                "/api/reservas/**",
                                 "/error",
                                 // TODO: sacar de la whitelist cuando se integre JWT.
                                 // Por ahora públicos para poder desarrollar/probar el ABM de clientes.
