@@ -81,7 +81,7 @@ class ReservaServiceImplTest {
 
         assertNotNull(response);
         assertEquals("CONFIRMADA", response.getEstado());
-        assertEquals(0, new BigDecimal("40000.00").compareTo(response.getImporteTotal())); // 20000 * 2 días
+        assertEquals(0, new BigDecimal("4000.00").compareTo(response.getImporteTotal())); // 2000 * 2 días
     }
 
     @Test

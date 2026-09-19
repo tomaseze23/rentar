@@ -53,7 +53,7 @@ class ReservaControllerTest {
 
         Mockito.when(reservaService.crearReserva(any(ReservaRequest.class))).thenReturn(response);
 
-        mockMvc.perform(post("/api/v1/reservas")
+        mockMvc.perform(post("/api/reservas")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isCreated())
@@ -67,7 +67,7 @@ class ReservaControllerTest {
     void crearReserva_CamposNulos() throws Exception {
         ReservaRequest requestInvalido = new ReservaRequest(null, null, null, null);
 
-        mockMvc.perform(post("/api/v1/reservas")
+        mockMvc.perform(post("/api/reservas")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(requestInvalido)))
                 .andExpect(status().isBadRequest());
@@ -83,7 +83,7 @@ class ReservaControllerTest {
         Mockito.when(reservaService.crearReserva(any(ReservaRequest.class)))
                 .thenThrow(new ResponseStatusException(HttpStatus.CONFLICT, "Vehículo ocupado"));
 
-        mockMvc.perform(post("/api/v1/reservas")
+        mockMvc.perform(post("/api/reservas")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isConflict());
