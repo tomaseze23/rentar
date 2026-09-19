@@ -1,9 +1,13 @@
 package com.rentar.rentar.repositories;
 
 import com.rentar.rentar.entities.EstadoReserva;
-import com.rentar.rentar.entities.EstadoVehiculo;
 import com.rentar.rentar.entities.Reserva;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.EntityGraph;
+import org.springframework.data.jpa.domain.Specification;
+import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
+import org.springframework.data.domain.Sort;
+import java.util.List;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
@@ -11,7 +15,11 @@ import org.springframework.stereotype.Repository;
 import java.time.LocalDateTime;
 
 @Repository
-public interface ReservaRepository extends JpaRepository<Reserva, Long> {
+public interface ReservaRepository extends JpaRepository<Reserva, Long>, JpaSpecificationExecutor<Reserva> {
+
+    @EntityGraph(attributePaths = {"cliente", "vehiculo"})
+    List<Reserva> findAll(Specification<Reserva> spec, Sort sort);
+
 
     @Query("""
         SELECT COUNT(r) > 0 FROM Reserva r
