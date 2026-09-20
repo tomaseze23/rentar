@@ -95,10 +95,12 @@ Se crea solo al levantar la aplicación (no hace falta cargarlo a mano):
 
 | Rol             | Puede acceder a                                              |
 |-----------------|-------------------------------------------------------------|
-| `ADMINISTRADOR` | ABM de vehículos, ABM de clientes                           |
-| `CLIENTE`       | Alta y cancelación de reservas, consulta e historial        |
+| `ADMINISTRADOR` | ABM de vehículos, ABM de clientes (REST y GraphQL), consulta de todas las reservas |
+| `CLIENTE`       | Consulta de disponibilidad, alta y cancelación de reservas propias, consulta e historial |
 
 Los clientes se crean desde el ABM de clientes (rol ADMINISTRADOR); al crear un cliente se genera también su usuario con rol CLIENTE.
+
+El alta de reserva **no recibe el cliente en el body**: se toma del token JWT, y solo se pueden cancelar reservas propias.
 
 ## Endpoints
 
@@ -125,6 +127,18 @@ Con la aplicación corriendo:
 - **Cancelación de reservas** — baja lógica, solo si el período no comenzó (REST).
 - **Consulta de reservas e historial de alquileres** — GraphQL, filtrado por el usuario autenticado.
 - **Seguridad** — login con JWT, encriptación de contraseñas y autorización por rol.
+
+## Front (web)
+
+Está en `frontend/` (React + Vite + TypeScript). Requiere Node 20+ y el backend corriendo en el puerto 8080:
+
+```bash
+cd frontend
+npm install
+npm run dev
+```
+
+Abre en http://localhost:5173 (el servidor de desarrollo redirige `/api` y `/graphql` al backend, sin necesidad de CORS). Se ingresa con las mismas credenciales del login; según el rol se muestran las pantallas de administrador (vehículos, clientes, reservas) o de cliente (buscar y reservar, mis reservas, historial).
 
 ## Estructura del proyecto
 
