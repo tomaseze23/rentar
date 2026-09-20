@@ -26,6 +26,8 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.*;
 
+import org.springframework.security.crypto.password.PasswordEncoder;
+
 @ExtendWith(MockitoExtension.class)
 class ClienteServiceTest {
 
@@ -35,11 +37,14 @@ class ClienteServiceTest {
     @Mock
     private UsuarioRepository usuarioRepository;
 
+    @Mock
+    private PasswordEncoder passwordEncoder;
+
     private ClienteService clienteService;
 
     @BeforeEach
     void setUp() {
-        clienteService = new ClienteService(clienteRepository, usuarioRepository);
+        clienteService = new ClienteService(clienteRepository, usuarioRepository, passwordEncoder);
     }
 
     private ClienteRequest buildRequest() {

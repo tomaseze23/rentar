@@ -11,6 +11,7 @@ import com.rentar.rentar.repositories.ClienteRepository;
 import com.rentar.rentar.repositories.UsuarioRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.security.crypto.password.PasswordEncoder;
 
 import java.util.List;
 
@@ -19,10 +20,14 @@ public class ClienteService {
 
     private final ClienteRepository clienteRepository;
     private final UsuarioRepository usuarioRepository;
+    private final PasswordEncoder passwordEncoder;
 
-    public ClienteService(ClienteRepository clienteRepository, UsuarioRepository usuarioRepository) {
+    public ClienteService(ClienteRepository clienteRepository,
+                          UsuarioRepository usuarioRepository,
+                          PasswordEncoder passwordEncoder) {
         this.clienteRepository = clienteRepository;
         this.usuarioRepository = usuarioRepository;
+        this.passwordEncoder = passwordEncoder;
     }
 
     @Transactional
@@ -34,9 +39,8 @@ public class ClienteService {
             throw new DuplicateResourceException("Ya existe un cliente con el documento: " + request.getDocumento());
         }
 
-        // NOTA: el password se guarda tal cual llega por ahora; cuando se integre
-        // Spring Security con JWT, acá debe aplicarse el PasswordEncoder correspondiente.
-        Usuario usuario = new Usuario(request.getEmail(), request.getPassword(), "CLIENTE");
+
+        Usuario usuario = new Usuario(request.getEmail(), passwordEncoder.encode(request.getPassword()), "CLIENTE");
         usuario = usuarioRepository.save(usuario);
 
         Cliente cliente = new Cliente(
