@@ -26,6 +26,8 @@ import static org.springframework.security.test.web.servlet.request.SecurityMock
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
+import com.rentar.rentar.security.JwtService;
+
 @WebMvcTest(ClienteController.class)
 @WithMockUser
 class ClienteControllerTest {
@@ -37,6 +39,9 @@ class ClienteControllerTest {
 
     @MockitoBean
     private ClienteService clienteService;
+
+    @MockitoBean
+    private JwtService jwtService;
 
     @Test
     void crear_deberiaDevolver201ConClienteCreado() throws Exception {
