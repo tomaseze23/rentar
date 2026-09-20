@@ -319,6 +319,23 @@ class SeguridadIntegrationTest {
                 .andExpect(jsonPath("$.data.reservas.length()").value(0));
     }
 
+    @Test
+    @DisplayName("El ADMINISTRADOR puede consultar las reservas confirmadas vigentes de un cliente (aviso previo a su baja)")
+    void reservasVigentesDeUnCliente() throws Exception {
+        String query = """
+                query($filtro: ReservaFiltro) { reservas(filtro: $filtro) { id cliente estado } }""";
+        String desde = LocalDateTime.now().withNano(0).toString();
+
+        graphql(tokenAdmin, query, Map.of("filtro", Map.of(
+                        "clienteId", String.valueOf(ana.getId()), "estado", "CONFIRMADA", "fechaDesde", desde)))
+                .andExpect(jsonPath("$.errors").doesNotExist())
+                .andExpect(jsonPath("$.data.reservas.length()").value(1));
+
+        graphql(tokenAdmin, query, Map.of("filtro", Map.of(
+                        "clienteId", String.valueOf(beto.getId()), "estado", "CONFIRMADA", "fechaDesde", desde)))
+                .andExpect(jsonPath("$.data.reservas.length()").value(0));
+    }
+
     // --- utilidades ---
 
     private Cliente cliente(String email, String documento, String nombre) {
