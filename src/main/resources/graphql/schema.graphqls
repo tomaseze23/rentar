@@ -2,6 +2,8 @@ type Query {
     ping: String
     clientes(incluirInactivos: Boolean = false): [Cliente!]!
     cliente(id: ID!): Cliente
+    reservas(filtro: ReservaFiltro): [ReservaConsulta!]!
+    historialAlquileres: [HistorialAlquiler!]!
 }
 
 type Mutation {
@@ -37,4 +39,52 @@ input ClienteUpdateInput {
     apellido: String!
     telefono: String
     fechaNacimiento: String
+}
+
+input ReservaFiltro {
+    clienteId: ID
+    vehiculoId: ID
+    tipoVehiculo: TipoVehiculo
+    estado: EstadoReserva
+    fechaDesde: String
+    fechaHasta: String
+}
+
+enum TipoVehiculo {
+    SEDAN
+    SUV
+    PICKUP
+    COUPE
+    HATCHBACK
+}
+
+enum EstadoReserva {
+    PENDIENTE
+    CONFIRMADA
+    CANCELADA
+}
+
+type ReservaConsulta {
+    id: ID!
+    clienteId: ID!
+    cliente: String!
+    vehiculoId: ID!
+    vehiculo: String!
+    patente: String!
+    fechaInicio: String!
+    fechaFin: String!
+    precioDiario: String!
+    importeTotal: String!
+    estado: String!
+}
+
+type HistorialAlquiler {
+    id: ID!
+    vehiculo: String!
+    patente: String!
+    fechaInicio: String!
+    fechaFin: String!
+    cantidadDias: Int!
+    importeTotal: String!
+    estado: String!
 }
