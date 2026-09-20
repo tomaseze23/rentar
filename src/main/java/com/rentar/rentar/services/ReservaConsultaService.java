@@ -21,7 +21,6 @@ import org.springframework.transaction.annotation.Transactional;
 
 import jakarta.persistence.criteria.Predicate;
 import java.time.DateTimeException;
-import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
@@ -161,16 +160,7 @@ public class ReservaConsultaService {
         return new HistorialAlquilerResponse(
                 r.getId(), nombreVehiculo(r), r.getVehiculo().getPatente(),
                 r.getFechaInicio().toString(), r.getFechaFin().toString(),
-                diasFacturados(r.getFechaInicio(), r.getFechaFin()),
+                PeriodoAlquiler.diasFacturados(r.getFechaInicio(), r.getFechaFin()),
                 r.getImporteTotal().toPlainString(), estadoVisible);
-    }
-
-    private long diasFacturados(LocalDateTime inicio, LocalDateTime fin) {
-        Duration duracion = Duration.between(inicio, fin);
-        if (duracion.isZero() || duracion.isNegative()) {
-            throw new IllegalStateException("La reserva " + inicio + " tiene un período inválido");
-        }
-        long diasCompletos = duracion.toDays();
-        return diasCompletos + (duracion.minusDays(diasCompletos).isZero() ? 0 : 1);
     }
 }

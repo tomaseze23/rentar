@@ -11,6 +11,7 @@ import com.rentar.rentar.entities.EstadoReserva;
 import com.rentar.rentar.entities.Reserva;
 import com.rentar.rentar.entities.Vehiculo;
 
+import com.rentar.rentar.services.PeriodoAlquiler;
 import com.rentar.rentar.services.ReservaService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -19,7 +20,6 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.math.BigDecimal;
-import java.time.Duration;
 import java.time.LocalDateTime;
 @Service
 @RequiredArgsConstructor
@@ -30,7 +30,7 @@ public class ReservaServiceImpl implements ReservaService {
 
     @Override
     @Transactional
-    public ReservaResponse crearReserva(ReservaRequest request) {
+    public ReservaResponse crearReserva(ReservaRequest request, String emailCliente) {
         // 1. Validaciones de fechas
         if (!request.getFechaFin().isAfter(request.getFechaInicio())) {
             throw new ResponseStatusException(
@@ -46,12 +46,8 @@ public class ReservaServiceImpl implements ReservaService {
             );
         }
 
-        // 2. Verificar existencia y estado del Cliente
-        Cliente cliente = clienteRepository.findById(request.getClienteId())
-                .orElseThrow(() -> new ResponseStatusException(
-                        HttpStatus.NOT_FOUND,
-                        "Cliente no encontrado con ID: " + request.getClienteId()
-                ));
+        // 2. El cliente es el usuario autenticado: debe existir y estar activo
+        Cliente cliente = clienteAutenticado(emailCliente);
 
         if (!Boolean.TRUE.equals(cliente.isActivo())) {
             throw new ResponseStatusException(
@@ -90,11 +86,7 @@ public class ReservaServiceImpl implements ReservaService {
         }
 
         // 5. Cálculo del total según duración y precio diario
-        long horas = Duration.between(request.getFechaInicio(), request.getFechaFin()).toHours();
-        long dias = (long) Math.ceil((double) horas / 24.0);
-        if (dias == 0) {
-            dias = 1;
-        }
+        long dias = PeriodoAlquiler.diasFacturados(request.getFechaInicio(), request.getFechaFin());
 
         BigDecimal importeTotal = BigDecimal.valueOf(vehiculo.getPrecioDiario())
                 .multiply(BigDecimal.valueOf(dias));
@@ -125,11 +117,17 @@ public class ReservaServiceImpl implements ReservaService {
 
     @Override
     @Transactional
-    public ReservaResponse cancelarReserva(Long id) {
-        // 1. La reserva debe existir
+    public ReservaResponse cancelarReserva(Long id, String emailCliente) {
+        // 1. La reserva debe existir y pertenecer al cliente autenticado
         Reserva reserva = reservaRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException(
                         "Reserva no encontrada con ID: " + id));
+
+        Cliente cliente = clienteAutenticado(emailCliente);
+        if (!reserva.getCliente().getId().equals(cliente.getId())) {
+            throw new ResponseStatusException(
+                    HttpStatus.FORBIDDEN, "No podés cancelar reservas de otro cliente");
+        }
 
         // 2. No cancelar algo ya cancelado
         if (reserva.getEstado() == EstadoReserva.CANCELADA) {
@@ -158,6 +156,14 @@ public class ReservaServiceImpl implements ReservaService {
                 actualizada.getImporteTotal(),
                 actualizada.getEstado().name()
         );
+    }
+
+    private Cliente clienteAutenticado(String email) {
+        return clienteRepository.findByUsuarioEmail(email)
+                .orElseThrow(() -> new ResponseStatusException(
+                        HttpStatus.NOT_FOUND,
+                        "No existe un cliente asociado al usuario autenticado"
+                ));
     }
 
 }

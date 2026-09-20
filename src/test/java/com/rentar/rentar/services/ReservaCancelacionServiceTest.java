@@ -32,6 +32,8 @@ import static org.mockito.Mockito.*;
 @DisplayName("Tests de cancelación de reservas")
 public class ReservaCancelacionServiceTest {
 
+    private static final String EMAIL = "cliente@mail.com";
+
     @Mock
     private ReservaRepository reservaRepository;
 
@@ -44,20 +46,25 @@ public class ReservaCancelacionServiceTest {
     @InjectMocks
     private ReservaServiceImpl reservaService;
 
+    private Cliente clienteAutenticado;
+
+    @BeforeEach
+    void setUp() {
+        clienteAutenticado = new Cliente();
+        clienteAutenticado.setId(1L);
+    }
+
     /**
-     * Arma una reserva CONFIRMADA con la fecha de inicio indicada.
+     * Arma una reserva CONFIRMADA del cliente autenticado con la fecha de inicio indicada.
      * Sirve para simular tanto una reserva futura (cancelable) como una ya iniciada.
      */
     private Reserva buildReservaConfirmada(LocalDateTime fechaInicio) {
-        Cliente cliente = new Cliente();
-        cliente.setId(1L);
-
         Vehiculo vehiculo = new Vehiculo();
         vehiculo.setId(2L);
 
         Reserva reserva = new Reserva();
         reserva.setId(1L);
-        reserva.setCliente(cliente);
+        reserva.setCliente(clienteAutenticado);
         reserva.setVehiculo(vehiculo);
         reserva.setFechaInicio(fechaInicio);
         reserva.setFechaFin(fechaInicio.plusDays(4));
@@ -73,9 +80,10 @@ public class ReservaCancelacionServiceTest {
         Reserva reserva = buildReservaConfirmada(LocalDateTime.now().plusDays(5));
 
         when(reservaRepository.findById(1L)).thenReturn(Optional.of(reserva));
+        when(clienteRepository.findByUsuarioEmail(EMAIL)).thenReturn(Optional.of(clienteAutenticado));
         when(reservaRepository.save(any(Reserva.class))).thenAnswer(inv -> inv.getArgument(0));
 
-        ReservaResponse response = reservaService.cancelarReserva(1L);
+        ReservaResponse response = reservaService.cancelarReserva(1L, EMAIL);
 
         assertNotNull(response);
         assertEquals("CANCELADA", response.getEstado());
@@ -89,10 +97,29 @@ public class ReservaCancelacionServiceTest {
         when(reservaRepository.findById(99L)).thenReturn(Optional.empty());
 
         assertThrows(ResourceNotFoundException.class, () ->
-                reservaService.cancelarReserva(99L)
+                reservaService.cancelarReserva(99L, EMAIL)
         );
 
         // No debe intentar guardar nada si la reserva no existe
+        verify(reservaRepository, never()).save(any());
+    }
+
+    @Test
+    @DisplayName("Debe lanzar FORBIDDEN si la reserva pertenece a otro cliente")
+    void testCancelarReserva_DeOtroCliente() {
+        Reserva reserva = buildReservaConfirmada(LocalDateTime.now().plusDays(5));
+        Cliente otroCliente = new Cliente();
+        otroCliente.setId(99L);
+
+        when(reservaRepository.findById(1L)).thenReturn(Optional.of(reserva));
+        when(clienteRepository.findByUsuarioEmail(EMAIL)).thenReturn(Optional.of(otroCliente));
+
+        ResponseStatusException ex = assertThrows(ResponseStatusException.class, () ->
+                reservaService.cancelarReserva(1L, EMAIL)
+        );
+
+        assertEquals(HttpStatus.FORBIDDEN, ex.getStatusCode());
+        assertEquals(EstadoReserva.CONFIRMADA, reserva.getEstado());
         verify(reservaRepository, never()).save(any());
     }
 
@@ -103,9 +130,10 @@ public class ReservaCancelacionServiceTest {
         reserva.setEstado(EstadoReserva.CANCELADA);
 
         when(reservaRepository.findById(1L)).thenReturn(Optional.of(reserva));
+        when(clienteRepository.findByUsuarioEmail(EMAIL)).thenReturn(Optional.of(clienteAutenticado));
 
         ResponseStatusException ex = assertThrows(ResponseStatusException.class, () ->
-                reservaService.cancelarReserva(1L)
+                reservaService.cancelarReserva(1L, EMAIL)
         );
 
         assertEquals(HttpStatus.CONFLICT, ex.getStatusCode());
@@ -119,9 +147,10 @@ public class ReservaCancelacionServiceTest {
         Reserva reserva = buildReservaConfirmada(LocalDateTime.now().minusHours(1));
 
         when(reservaRepository.findById(1L)).thenReturn(Optional.of(reserva));
+        when(clienteRepository.findByUsuarioEmail(EMAIL)).thenReturn(Optional.of(clienteAutenticado));
 
         ResponseStatusException ex = assertThrows(ResponseStatusException.class, () ->
-                reservaService.cancelarReserva(1L)
+                reservaService.cancelarReserva(1L, EMAIL)
         );
 
         assertEquals(HttpStatus.CONFLICT, ex.getStatusCode());

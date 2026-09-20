@@ -15,9 +15,6 @@ import java.time.LocalDateTime;
 @AllArgsConstructor
 public class ReservaRequest {
 
-    @NotNull(message = "El ID del cliente es obligatorio")
-    private Long clienteId;
-
     @NotNull(message = "El ID del vehículo es obligatorio")
     private Long vehiculoId;
 
