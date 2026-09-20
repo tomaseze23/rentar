@@ -1,6 +1,8 @@
 package com.rentar.rentar.exceptions;
 
 import graphql.GraphQLError;
+import org.springframework.security.access.AccessDeniedException;
+import org.springframework.security.authentication.AuthenticationCredentialsNotFoundException;
 import graphql.GraphqlErrorBuilder;
 import graphql.schema.DataFetchingEnvironment;
 import org.springframework.graphql.execution.DataFetcherExceptionResolverAdapter;
@@ -16,6 +18,15 @@ public class GraphQLExceptionHandler extends DataFetcherExceptionResolverAdapter
 
     @Override
     protected GraphQLError resolveToSingleError(Throwable ex, DataFetchingEnvironment env) {
+        if (ex instanceof AuthenticationCredentialsNotFoundException) {
+            return build("Se requiere iniciar sesión", ErrorType.UNAUTHORIZED, env);
+        }
+        if (ex instanceof AccessDeniedException) {
+            return build("Acceso denegado", ErrorType.FORBIDDEN, env);
+        }
+        if (ex instanceof IllegalArgumentException) {
+            return build(ex.getMessage(), ErrorType.BAD_REQUEST, env);
+        }
         if (ex instanceof ResourceNotFoundException) {
             return build(ex.getMessage(), ErrorType.NOT_FOUND, env);
         }
