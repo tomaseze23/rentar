@@ -16,7 +16,7 @@ import org.springframework.test.context.TestPropertySource;
 		"spring.datasource.username=sa",
 		"spring.datasource.password=",
 		"spring.jpa.hibernate.ddl-auto=update",
-		"jwt.secret=test-secret-not-for-production"
+		"jwt.secret=test-secret-not-for-production-1234"
 })
 class RentarApplicationTests {
 

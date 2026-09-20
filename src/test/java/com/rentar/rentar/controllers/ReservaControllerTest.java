@@ -24,6 +24,9 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import com.rentar.rentar.security.JwtService;
+
+
 @WebMvcTest(ReservaController.class)
 @AutoConfigureMockMvc(addFilters = false) // Deshabilita los filtros de Spring Security y CSRF en el test
 class ReservaControllerTest {
@@ -36,6 +39,9 @@ class ReservaControllerTest {
 
     @MockitoBean
     private ReservaService reservaService;
+
+    @MockitoBean
+    private JwtService jwtService;
 
     @Test
     @DisplayName("Debe retornar 201 Created cuando la reserva es exitosa")

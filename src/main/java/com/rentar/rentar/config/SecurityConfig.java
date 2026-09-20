@@ -1,23 +1,36 @@
 package com.rentar.rentar.config;
 
+import com.rentar.rentar.security.JwtAuthFilter;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
+import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 
 @Configuration
 @EnableWebSecurity
 public class SecurityConfig {
 
+    private final JwtAuthFilter jwtAuthFilter;
+
+    public SecurityConfig (JwtAuthFilter jwtAuthFilter) {
+        this.jwtAuthFilter  = jwtAuthFilter;
+    }
+
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
-                .csrf(AbstractHttpConfigurer::disable) // Desactivar CSRF para APIs REST
+                .csrf(AbstractHttpConfigurer::disable)
+                // sin sesion de servidor el token es el estado
+                .sessionManagement(sm
+                        -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
-                        // Dejar rutas de documentación y GraphQL públicas por ahora
+                        // --- PUBLICOS ---
                         .requestMatchers(
+                                "/api/auth/**",
                                 "/swagger-ui/**",
                                 "/swagger-ui.html",
                                 "/v3/api-docs",
@@ -25,16 +38,22 @@ public class SecurityConfig {
                                 "/swagger-resources/**",
                                 "/graphiql/**",
                                 "/graphql/**",
-                                "/api/vehiculos/**",
-                                "/api/reservas/**",
-                                "/error",
-                                // TODO: sacar de la whitelist cuando se integre JWT.
-                                // Por ahora públicos para poder desarrollar/probar el ABM de clientes.
-                                "/api/clientes/**"
+                                "/error"
                         ).permitAll()
-                        // El resto de los endpoints requerirán autenticación (para cuando sumen JWT)
+
+                        // ABM VEHICULOS: solo admin
+                        .requestMatchers("/api/vehiculos/**").hasRole("ADMINISTRADOR")
+
+                        // ABM CLIENTES: solo admin
+                        .requestMatchers("/api/clientes/**").hasRole("ADMINISTRADOR")
+
+                        // RESERVAS: solo cliente
+                        .requestMatchers("/api/reservas/**").hasRole("CLIENTE")
+
+                        //Todo lo demas requiere autenticacion
                         .anyRequest().authenticated()
-                );
+                )
+                .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
     }
