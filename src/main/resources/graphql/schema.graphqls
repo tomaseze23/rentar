@@ -4,6 +4,12 @@ type Query {
     cliente(id: ID!): Cliente
     reservas(filtro: ReservaFiltro): [ReservaConsulta!]!
     historialAlquileres: [HistorialAlquiler!]!
+
+    """
+    Vehículos activos que están libres durante TODO el período indicado (sin reservas confirmadas
+    que se superpongan). Requiere rol CLIENTE. Los filtros opcionales se combinan con AND.
+    """
+    vehiculosDisponibles(filtro: DisponibilidadFiltro!): [VehiculoDisponible!]!
 }
 
 type Mutation {
@@ -48,6 +54,35 @@ input ReservaFiltro {
     estado: EstadoReserva
     fechaDesde: String
     fechaHasta: String
+}
+
+"Criterios de búsqueda de disponibilidad. Las fechas son obligatorias; el resto es opcional."
+input DisponibilidadFiltro {
+    "Inicio del período (ISO-8601, ej. 2026-10-01T10:00). Debe ser futura."
+    fechaInicio: String!
+    "Fin del período (ISO-8601). Debe ser posterior al inicio."
+    fechaFin: String!
+    tipoVehiculo: TipoVehiculo
+    "Coincidencia parcial, sin distinguir mayúsculas."
+    marca: String
+    "Coincidencia parcial, sin distinguir mayúsculas."
+    modelo: String
+    "Precio diario mínimo (inclusive)."
+    precioMin: Float
+    "Precio diario máximo (inclusive)."
+    precioMax: Float
+}
+
+"Vehículo disponible para alquilar en el período consultado."
+type VehiculoDisponible {
+    id: ID!
+    patente: String!
+    marca: String!
+    modelo: String!
+    anio: String!
+    color: String
+    tipoVehiculo: TipoVehiculo
+    precioDiario: Float
 }
 
 enum TipoVehiculo {
