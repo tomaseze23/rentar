@@ -8,4 +8,5 @@ export const vehiculosApi = {
   modificar: (id: number, input: VehiculoInput) =>
     request<Vehiculo>(`/api/vehiculos/${id}`, { method: 'PUT', body: input }),
   baja: (id: number) => request<void>(`/api/vehiculos/${id}`, { method: 'DELETE' }),
+  reactivar: (id: number) => request<Vehiculo>(`/api/vehiculos/${id}/reactivar`, { method: 'PATCH' }),
 }

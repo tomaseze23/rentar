@@ -8,4 +8,5 @@ export const clientesApi = {
   actualizar: (id: number, input: ClienteUpdateInput) =>
     request<Cliente>(`/api/clientes/${id}`, { method: 'PUT', body: input }),
   baja: (id: number) => request<void>(`/api/clientes/${id}`, { method: 'DELETE' }),
+  reactivar: (id: number) => request<Cliente>(`/api/clientes/${id}/reactivar`, { method: 'PATCH' }),
 }

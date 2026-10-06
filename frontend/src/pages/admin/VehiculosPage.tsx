@@ -46,6 +46,7 @@ function validar(form: FormState): string | null {
   if (!form.marca.trim()) return 'La marca es obligatoria.'
   if (!form.modelo.trim()) return 'El modelo es obligatorio.'
   if (!form.anio.trim()) return 'El año es obligatorio.'
+  if (!/^\d{4}$/.test(form.anio.trim())) return 'El año debe tener 4 dígitos.'
   const precio = Number(form.precioDiario)
   if (!form.precioDiario || Number.isNaN(precio) || precio <= 0) return 'El precio diario debe ser mayor a 0.'
   return null
@@ -100,6 +101,18 @@ export function VehiculosPage() {
       setError(errorMessage(e))
     } finally {
       setABaja(null)
+    }
+  }
+
+  async function reactivar(v: Vehiculo) {
+    setError(null)
+    setNotice(null)
+    try {
+      await vehiculosApi.reactivar(v.id)
+      setNotice(`Vehículo ${v.patente} reactivado.`)
+      await cargar()
+    } catch (e){
+      setError(errorMessage(e))
     }
   }
 
@@ -165,9 +178,15 @@ export function VehiculosPage() {
                     <button type="button" className="btn small" onClick={() => setEditando(v)}>
                       Editar
                     </button>
-                    <button type="button" className="btn small danger" disabled={v.activo === false} onClick={() => abrirBaja(v)}>
-                      Dar de baja
-                    </button>
+                    {v.activo === false ? (
+                      <button type="button" className="btn small" onClick={() => reactivar(v)}>
+                        Reactivar
+                      </button>
+                    ) : (
+                      <button type="button" className="btn small danger" onClick={() => abrirBaja(v)}>
+                        Dar de baja
+                      </button>
+                    )}
                   </td>
                 </tr>
               ))}

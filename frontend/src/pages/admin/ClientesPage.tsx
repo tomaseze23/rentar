@@ -88,6 +88,18 @@ export function ClientesPage() {
     }
   }
 
+  async function reactivar(c: Cliente){
+    setError(null)
+    setNotice(null)
+    try {
+      await clientesApi.reactivar(c.id)
+      setNotice(`Cliente ${c.nombre} ${c.apellido} reactivado.`)
+      await cargar()
+    } catch (e){
+      setError(errorMessage(e))
+    }
+  }
+
   async function onGuardado(mensaje: string) {
     setEditando(null)
     setNotice(mensaje)
@@ -145,9 +157,15 @@ export function ClientesPage() {
                     <button type="button" className="btn small" disabled={!c.activo} onClick={() => setEditando(c)}>
                       Editar
                     </button>
-                    <button type="button" className="btn small danger" disabled={!c.activo} onClick={() => abrirBaja(c)}>
-                      Dar de baja
-                    </button>
+                    {c.activo ? (
+                      <button type="button" className="btn small danger" onClick={() => abrirBaja(c)}>
+                        Dar de baja
+                      </button>
+                    ) : (
+                      <button type="button" className="btn small" onClick={() => reactivar(c)}>
+                        Reactivar
+                      </button>
+                    )}
                   </td>
                 </tr>
               ))}
