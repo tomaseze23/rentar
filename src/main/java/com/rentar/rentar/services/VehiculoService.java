@@ -1,16 +1,19 @@
 package com.rentar.rentar.services;
 
 
-import com.rentar.rentar.entities.Vehiculo;
+import com.rentar.rentar.dtos.VehiculoRequest;
+import com.rentar.rentar.dtos.VehiculoResponse;
+import com.rentar.rentar.dtos.VehiculoUpdateRequest;
 
 import java.util.List;
 
 
 public interface VehiculoService {
-    Vehiculo crear(Vehiculo v);
-    Vehiculo modificar(Long id, Vehiculo datos);
+    VehiculoResponse crear(VehiculoRequest request);
+    VehiculoResponse modificar(Long id, VehiculoUpdateRequest request);
     void bajaLogica(Long id);
-    List<Vehiculo> listar(Boolean activo);
-    Vehiculo consultar(Long id);
+    VehiculoResponse reactivar(Long id);
+    List<VehiculoResponse> listar(Boolean activo);
+    VehiculoResponse consultar(Long id);
 
 }

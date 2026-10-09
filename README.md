@@ -116,13 +116,13 @@ Con la aplicación corriendo:
 | ABM de clientes    | http://localhost:8080/api/clientes             | ADMINISTRADOR |
 | Reservas           | http://localhost:8080/api/reservas             | CLIENTE       |
 
-(*) GraphiQL como interfaz es pública, pero las queries de reservas/historial requieren token con rol CLIENTE (se envía en la pestaña Headers).
+(*) GraphiQL como interfaz es pública, pero las queries de reservas/historial requieren token con rol CLIENTE (se envía en la pestaña Headers). Todas las operaciones y tipos del schema estàn documentados. Se ven en el panel **Docs** de GraphiQL.
 
 ## Funcionalidades (Hito 1)
 
-- **Vehículos** — ABM completo (REST).
+- **Vehículos** — ABM completo (REST), con validación del body (campos obligatorios, año de 4 dígitos, precio > 0, patente única e inmodificable) y reactivación (`PATCH /api/vehiculos/{id}/reactivar`)..
 - **Consulta de disponibilidad** — GraphQL.
-- **Clientes** — ABM completo (REST) + operaciones por GraphQL.
+- **Clientes** — ABM completo (REST) + operaciones por GraphQL, con reactivación (`PATCH /api/clientes/{id}/reactivar` o mutation `reactivarCliente`)..
 - **Reservas** — alta con validaciones y cálculo de importe (REST).
 - **Cancelación de reservas** — baja lógica, solo si el período no comenzó (REST).
 - **Consulta de reservas e historial de alquileres** — GraphQL, filtrado por el usuario autenticado.

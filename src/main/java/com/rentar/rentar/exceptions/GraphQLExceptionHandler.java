@@ -10,6 +10,7 @@ import org.springframework.graphql.execution.ErrorType;
 import org.springframework.stereotype.Component;
 import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.util.stream.Collectors;
 
@@ -42,6 +43,17 @@ public class GraphQLExceptionHandler extends DataFetcherExceptionResolverAdapter
         if (ex instanceof jakarta.validation.ConstraintViolationException cve) {
             return build(cve.getMessage(), ErrorType.BAD_REQUEST, env);
         }
+       if (ex instanceof ResponseStatusException rse) {
+            String mensaje = rse.getReason() != null ? rse.getReason() : "Operación no permitida";
+            ErrorType tipo = switch (rse.getStatusCode().value()) {
+                case 401 -> ErrorType.UNAUTHORIZED;
+                case 403 -> ErrorType.FORBIDDEN;
+                case 404 -> ErrorType.NOT_FOUND;
+                default -> ErrorType.BAD_REQUEST;
+            };
+            return build(mensaje, tipo, env);
+        }
+
         return null; // deja que otros resolvers / el default se encarguen
     }
 

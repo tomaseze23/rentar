@@ -30,6 +30,7 @@ import java.util.Map;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.asyncDispatch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -334,6 +335,70 @@ class SeguridadIntegrationTest {
         graphql(tokenAdmin, query, Map.of("filtro", Map.of(
                         "clienteId", String.valueOf(beto.getId()), "estado", "CONFIRMADA", "fechaDesde", desde)))
                 .andExpect(jsonPath("$.data.reservas.length()").value(0));
+    }
+
+        // --- Reactivación de vehículos y clientes ---
+
+    @Test
+    @DisplayName("Un vehículo reactivado vuelve a admitir reservas; solo el ADMINISTRADOR puede reactivar")
+    void vehiculoReactivadoSeVuelveAReservar() throws Exception {
+        String url = "/api/vehiculos/" + vehiculo.getId();
+        mockMvc.perform(delete(url).header("Authorization", "Bearer " + tokenAdmin))
+                .andExpect(status().isNoContent());
+
+        mockMvc.perform(patch(url + "/reactivar").header("Authorization", "Bearer " + tokenAna))
+                .andExpect(status().isForbidden());
+        mockMvc.perform(patch(url + "/reactivar").header("Authorization", "Bearer " + tokenAdmin))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.activo").value(true));
+        mockMvc.perform(patch(url + "/reactivar").header("Authorization", "Bearer " + tokenAdmin))
+                .andExpect(status().isConflict());
+
+        String body = """
+                {"vehiculoId": %d, "fechaInicio": "%s", "fechaFin": "%s"}"""
+                .formatted(vehiculo.getId(),
+                        LocalDateTime.now().plusDays(20).withNano(0),
+                        LocalDateTime.now().plusDays(22).withNano(0));
+        mockMvc.perform(post("/api/reservas").header("Authorization", "Bearer " + tokenBeto)
+                        .contentType(MediaType.APPLICATION_JSON).content(body))
+                .andExpect(status().isCreated());
+    }
+
+    @Test
+    @DisplayName("Un cliente reactivado (REST o GraphQL) vuelve a quedar activo junto con su usuario")
+    void clienteReactivado() throws Exception {
+        mockMvc.perform(delete("/api/clientes/" + beto.getId()).header("Authorization", "Bearer " + tokenAdmin))
+                .andExpect(status().isNoContent());
+        org.junit.jupiter.api.Assertions.assertFalse(usuarios.findByEmail("beto@test.com").orElseThrow().isActivo());
+
+        mockMvc.perform(patch("/api/clientes/" + beto.getId() + "/reactivar").header("Authorization", "Bearer " + tokenAdmin))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.activo").value(true));
+        org.junit.jupiter.api.Assertions.assertTrue(usuarios.findByEmail("beto@test.com").orElseThrow().isActivo());
+
+        // por GraphQL: reactivar un cliente activo informa el error sin romper
+        graphql(tokenAdmin, "mutation { reactivarCliente(id: " + beto.getId() + ") { activo } }", Map.of())
+                .andExpect(jsonPath("$.errors[0].message").value("El cliente ya se encuentra activo"))
+                .andExpect(jsonPath("$.errors[0].extensions.classification").value("BAD_REQUEST"));
+    }
+
+        // --- Documentación del schema GraphQL ---
+
+    @Test
+    @DisplayName("Todas las operaciones y tipos GraphQL propios tienen descripción")
+    void schemaGraphQLDocumentado() throws Exception {
+        // graphql-java rechaza introspecciones que repiten __Type.fields, por eso se consulta cada raíz por separado
+        for (String raiz : new String[]{"Query", "Mutation"}) {
+            graphql(tokenAdmin, "{ __type(name: \"" + raiz + "\") { fields { name description args { name description } } } }", Map.of())
+                    .andExpect(jsonPath("$.errors").doesNotExist())
+                    .andExpect(jsonPath("$.data.__type.fields[?(@.description == null)]").isEmpty())
+                    .andExpect(jsonPath("$.data.__type.fields[*].args[?(@.description == null)]").isEmpty());
+        }
+
+        // tipos propios (los de introspección empiezan con "__" y los escalares son estándar)
+        graphql(tokenAdmin, "{ __schema { types { name kind description } } }", Map.of())
+                .andExpect(jsonPath("$.errors").doesNotExist())
+                .andExpect(jsonPath("$.data.__schema.types[?(@.kind != 'SCALAR' && !(@.name =~ /__.*/) && @.description == null)]").isEmpty());
     }
 
     // --- utilidades ---

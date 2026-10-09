@@ -27,6 +27,7 @@ import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.*;
 
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.web.server.ResponseStatusException;
 
 @ExtendWith(MockitoExtension.class)
 class ClienteServiceTest {
@@ -212,6 +213,42 @@ class ClienteServiceTest {
         assertThatThrownBy(() -> clienteService.eliminar(123L))
                 .isInstanceOf(ResourceNotFoundException.class);
 
+        verify(usuarioRepository, never()).save(any());
+    }
+
+     @Test
+    void reactivar_deberiaActivarClienteYUsuario() {
+        Usuario usuario = new Usuario("e@mail.com", "p", "CLIENTE");
+        usuario.setId(5L);
+        usuario.setActivo(false);
+        Cliente cliente = new Cliente(usuario, "555", "Nom", "Ape", null, null);
+        cliente.setId(9L);
+        cliente.setActivo(false);
+
+        when(clienteRepository.findById(9L)).thenReturn(Optional.of(cliente));
+        when(clienteRepository.save(any(Cliente.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        ClienteResponse response = clienteService.reactivar(9L);
+
+        assertThat(response.isActivo()).isTrue();
+        ArgumentCaptor<Usuario> usuarioCaptor = ArgumentCaptor.forClass(Usuario.class);
+        verify(usuarioRepository).save(usuarioCaptor.capture());
+        assertThat(usuarioCaptor.getValue().isActivo()).isTrue();
+    }
+
+    @Test
+    void reactivar_deberiaRechazarUnClienteYaActivo() {
+        Usuario usuario = new Usuario("f@mail.com", "p", "CLIENTE");
+        Cliente cliente = new Cliente(usuario, "666", "Nom", "Ape", null, null);
+        cliente.setId(10L);
+
+        when(clienteRepository.findById(10L)).thenReturn(Optional.of(cliente));
+
+        assertThatThrownBy(() -> clienteService.reactivar(10L))
+                .isInstanceOf(ResponseStatusException.class)
+                .hasMessageContaining("ya se encuentra activo");
+
+        verify(clienteRepository, never()).save(any());
         verify(usuarioRepository, never()).save(any());
     }
 }

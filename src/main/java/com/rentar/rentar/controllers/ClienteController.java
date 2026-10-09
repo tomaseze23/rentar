@@ -5,6 +5,8 @@ import com.rentar.rentar.dtos.ClienteResponse;
 import com.rentar.rentar.dtos.ClienteUpdateRequest;
 import com.rentar.rentar.services.ClienteService;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
@@ -59,5 +61,16 @@ public class ClienteController {
     public ResponseEntity<Void> eliminar(@PathVariable Long id) {
         clienteService.eliminar(id);
         return ResponseEntity.noContent().build();
+    }
+
+    @PatchMapping("/{id}/reactivar")
+    @Operation(summary = "Reactiva un cliente dado de baja (y su usuario asociado)")
+        @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Cliente reactivado"),
+            @ApiResponse(responseCode = "404", description = "Cliente no encontrado"),
+            @ApiResponse(responseCode = "409", description = "El cliente ya estaba activo")
+        })
+    public ResponseEntity<ClienteResponse> reactivar(@PathVariable Long id){
+        return ResponseEntity.ok(clienteService.reactivar(id));
     }
 }

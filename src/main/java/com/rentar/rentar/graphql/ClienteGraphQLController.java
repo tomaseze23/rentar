@@ -51,4 +51,9 @@ public class ClienteGraphQLController {
         clienteService.eliminar(id);
         return true;
     }
+
+    @MutationMapping 
+    public ClienteResponse reactivarCliente(@Argument Long id){
+        return clienteService.reactivar(id);
+    }
 }

@@ -9,7 +9,9 @@ import com.rentar.rentar.exceptions.DuplicateResourceException;
 import com.rentar.rentar.exceptions.ResourceNotFoundException;
 import com.rentar.rentar.repositories.ClienteRepository;
 import com.rentar.rentar.repositories.UsuarioRepository;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
+import org.springframework.web.server.ResponseStatusException;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
@@ -101,6 +103,23 @@ public class ClienteService {
         Usuario usuario = cliente.getUsuario();
         usuario.setActivo(false);
         usuarioRepository.save(usuario);
+    }
+
+    @Transactional 
+    public ClienteResponse reactivar (Long id){
+        //revierte la baja lógica, el cliente y su usuario vuelven a quedar activos.
+        Cliente cliente = obtenerClienteOrThrow(id);
+        if(cliente.isActivo()){
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "El cliente ya se encuentra activo");
+        }
+        cliente.setActivo(true);
+        cliente = clienteRepository.save(cliente);
+
+        Usuario usuario = cliente.getUsuario();
+        usuario.setActivo(true);
+        usuarioRepository.save(usuario);
+
+        return ClienteResponse.fromEntity(cliente);
     }
 
     private Cliente obtenerClienteOrThrow(Long id) {

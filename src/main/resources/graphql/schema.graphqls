@@ -1,58 +1,164 @@
+"""
+API GraphQL de Rentar.
+
+Todas las operaciones requieren un token JWT en el header `Authorization: Bearer <token>`,
+que se obtiene con `POST /api/auth/login`. Cada operación indica el rol que la puede usar.
+
+Las fechas con hora se intercambian como texto ISO-8601 sin zona horaria (ej. `2026-10-01T10:00`)
+y las fechas sin hora como `yyyy-MM-dd` (ej. `1990-05-20`).
+"""
+schema {
+    query: Query
+    mutation: Mutation
+}
+
+"Operaciones de consulta."
 type Query {
-    ping: String
-    clientes(incluirInactivos: Boolean = false): [Cliente!]!
-    cliente(id: ID!): Cliente
-    reservas(filtro: ReservaFiltro): [ReservaConsulta!]!
+    """
+    Lista los clientes de Rentar. Requiere rol ADMINISTRADOR.
+    Por defecto devuelve solo los activos.
+    """
+    clientes(
+        "Si es true incluye también los clientes dados de baja."
+        incluirInactivos: Boolean = false
+    ): [Cliente!]!
+
+    """
+    Devuelve un cliente por id. Requiere rol ADMINISTRADOR.
+    Si no existe responde con un error NOT_FOUND.
+    """
+    cliente(
+        "Id del cliente."
+        id: ID!
+    ): Cliente
+
+    """
+    consulta de reservas. Requiere rol CLIENTE o ADMINISTRADOR.
+    - Un CLIENTE solo ve sus propias reservas (si filtra por otro clienteId recibe FORBIDDEN).
+    - El ADMINISTRADOR ve las reservas de todos los clientes.
+    Todos los filtros son opcionales y se combinan con AND. Resultado ordenado de la más reciente a la más antigua.
+    """
+    reservas(
+        "Criterios de búsqueda opcionales."
+        filtro: ReservaFiltro
+    ): [ReservaConsulta!]!
+
+    """
+    Historial de alquileres del cliente autenticado. Requiere rol CLIENTE.
+    Incluye los alquileres finalizados (reservas confirmadas cuyo período ya terminó)
+    y las reservas canceladas. Resultado ordenado del más reciente al más antiguo.
+    """
     historialAlquileres: [HistorialAlquiler!]!
 
     """
     Vehículos activos que están libres durante TODO el período indicado (sin reservas confirmadas
     que se superpongan). Requiere rol CLIENTE. Los filtros opcionales se combinan con AND.
     """
-    vehiculosDisponibles(filtro: DisponibilidadFiltro!): [VehiculoDisponible!]!
+    vehiculosDisponibles(
+        "Período obligatorio y filtros opcionales."
+        filtro: DisponibilidadFiltro!
+    ): [VehiculoDisponible!]!
 }
 
+"Operaciones de modificación. Todas requieren rol ADMINISTRADOR."
 type Mutation {
-    crearCliente(input: ClienteInput!): Cliente!
-    actualizarCliente(id: ID!, input: ClienteUpdateInput!): Cliente!
-    eliminarCliente(id: ID!): Boolean!
+    """
+    Alta de un cliente. Crea también su usuario con rol CLIENTE para que pueda iniciar sesión.
+    El email y el documento deben ser únicos.
+    """
+    crearCliente(
+        "Datos del cliente y credenciales de acceso."    
+        input: ClienteInput!
+    ): Cliente!
+
+    """
+    Modifica los datos personales de un cliente.
+    El email y el documento no se pueden modificar.
+    """
+    actualizarCliente(
+        "Id del cliente a modificar."
+        id: ID!
+        "Nuevos datos del cliente."
+        input: ClienteUpdateInput!
+    ): Cliente!
+
+    """
+    Baja lógica de un cliente: el cliente y su usuario quedan incluirInactivos
+    (no puede iniciar sesión ni realizar nuevas reservas). No se elimina de la base.
+    Devuelve true si la baja se realizó.
+    """
+    eliminarCliente(
+        "Id del cliente a dar de baja."
+        id: ID!
+    ): Boolean!
+    
+    """
+    Revierte la baja lógica de un cliente, el cliente y su usuario vuelven a quedar activos.
+    Si el cliente ya estaba activo responde con un error BAD_REQUEST.
+    """
+    reactivarCliente(
+        "Id del cliente a reactivar."
+        id: ID!
+    ): Cliente!
 }
 
+
+"Cliente de Rentar."
 type Cliente {
+    "Id del cliente (clave primaria)."
     id: ID!
+    "Id del usuario asociado, usado para iniciar sesión."    
     usuarioId: ID!
+    "Email único; es también el usuario de login."
     email: String!
+    "Documento único"
     documento: String!
     nombre: String!
     apellido: String!
     telefono: String
+    "Fecha de nacimiento en formato yyyy-MM-dd."
     fechaNacimiento: String
+    "false si el cliente fue dado de baja (baja lógica)."   
     activo: Boolean!
 }
 
+"Datos para dar de alta un cliente."
 input ClienteInput {
+    "Email único; se usa para iniciar sesión." 
     email: String!
+    "Contraseña inicial. Se guarda encriptada (BCrypt)."
     password: String!
+    "Documento único."
     documento: String!
     nombre: String!
     apellido: String!
     telefono: String
+    "Fecha de nacimiento en formato yyyy-MM-dd."    
     fechaNacimiento: String
 }
 
+"Datos modificables de un cliente."
 input ClienteUpdateInput {
     nombre: String!
     apellido: String!
     telefono: String
+    "Fecha de nacimiento en formato yyyy-MM-dd."   
     fechaNacimiento: String
 }
 
+"Filtros opcionales de la consulta de reservas. Los que se envían se combinan con AND."
 input ReservaFiltro {
+    "Solo reservas de este cliente. Un CLIENTE solo puede indicar su propio id."
     clienteId: ID
+    "Solo reservas de este vehículo."
     vehiculoId: ID
+    "Solo reservas de vehículos de este tipo."
     tipoVehiculo: TipoVehiculo
+    "Solo reservas en este estado."
     estado: EstadoReserva
+    "Reservas cuyo período termina después de esta fecha (ISO-8601)."
     fechaDesde: String
+    "Reservas cuyo período empieza antes de esta fecha (ISO-8601). Debe ser posterior a fechaDesde."    
     fechaHasta: String
 }
 
@@ -62,6 +168,7 @@ input DisponibilidadFiltro {
     fechaInicio: String!
     "Fin del período (ISO-8601). Debe ser posterior al inicio."
     fechaFin: String!
+    "Tipo de vehículo buscado."
     tipoVehiculo: TipoVehiculo
     "Coincidencia parcial, sin distinguir mayúsculas."
     marca: String
@@ -69,22 +176,26 @@ input DisponibilidadFiltro {
     modelo: String
     "Precio diario mínimo (inclusive)."
     precioMin: Float
-    "Precio diario máximo (inclusive)."
+    "Precio diario máximo (inclusive). No puede ser menor que precioMin."
     precioMax: Float
 }
 
 "Vehículo disponible para alquilar en el período consultado."
 type VehiculoDisponible {
+    "Id del vehículo. Se usa para crear la reserva."
     id: ID!
     patente: String!
     marca: String!
     modelo: String!
+    "Año de fabricación."
     anio: String!
     color: String
     tipoVehiculo: TipoVehiculo
+    "Precio por día de alquiler."
     precioDiario: Float
 }
 
+"Tipos de vehículo de la flota."
 enum TipoVehiculo {
     SEDAN
     SUV
@@ -93,33 +204,58 @@ enum TipoVehiculo {
     HATCHBACK
 }
 
+"Estados posibles de una reserva."
 enum EstadoReserva {
+    "Reservado pero no confirmado. No se usa actualmente, toda reserva creada queda CONFIRMADA."
     PENDIENTE
+    "Reserva vigente, ocupa el vehículo durante su período."
     CONFIRMADA
+    "Reserva cancelada por el cliente antes de que comience. Libera el período del vehículo."
     CANCELADA
 }
 
+"Reserva tal como la ve la pantalla de consulta de reservas."
 type ReservaConsulta {
+    "Id de la reserva."
     id: ID!
+    "Id del cliente titular."
     clienteId: ID!
+    "Nombre y apellido del cliente."
     cliente: String!
+    "Id del vehículo reservado."
     vehiculoId: ID!
+    "Marca y modelo del vehículo."
     vehiculo: String!
+    "Patente del vehículo."
     patente: String!
+    "Inicio del período (ISO-8601)."
     fechaInicio: String!
+    "Fin del período (ISO-8601)."
     fechaFin: String!
+     "Precio diario congelado al momento de reservar (decimal como texto)."   
     precioDiario: String!
+    "Importe total: precio diario × días facturados (decimal como texto)."
     importeTotal: String!
+    "Estado de la reserva, uno de los valores de estadoReserva."
     estado: String!
 }
 
+"Un alquiler del historial del cliente."
 type HistorialAlquiler {
+    "Id de la reserva."
     id: ID!
+    "Marca y modelo del vehículo."
     vehiculo: String!
+    "Patente del vehículo."
     patente: String!
+    "Inicio del período (ISO-8601)."
     fechaInicio: String!
+    "Fin del período (ISO-8601)."
     fechaFin: String!
+    "Días facturados: cada 24 horas o fracción cuenta como un día."
     cantidadDias: Int!
+    "Importe total (decimal como texto)."
     importeTotal: String!
+    "FINALIZADA (el período ya terminó) o CANCELADA."
     estado: String!
 }
