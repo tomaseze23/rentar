@@ -1,4 +1,5 @@
 import express, { NextFunction, Request, Response } from 'express';
+import { config } from './config';
 import { errorBody, toHttpError } from './errors';
 
 const app = express();
