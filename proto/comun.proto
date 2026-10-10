@@ -2,7 +2,6 @@ syntax = "proto3";
 
 package rentar.comun.v1;
 
-// Tipos de vehículo definidos por el dominio de Rentar.
 enum TipoVehiculo {
   TIPO_VEHICULO_NO_ESPECIFICADO = 0;
   SEDAN = 1;

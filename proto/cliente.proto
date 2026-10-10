@@ -14,6 +14,7 @@ service ServicioClientes {
   rpc ConsultarCliente(SolicitudIdCliente) returns (Cliente);
   rpc VerificarExistenciaCliente(SolicitudIdCliente) returns (RespuestaVerificarExistenciaCliente);
   rpc VerificarClienteActivo(SolicitudIdCliente) returns (RespuestaVerificarClienteActivo);
+  rpc ValidarCredencialesLogin(SolicitudValidarCredencialesLogin) returns (RespuestaValidarCredencialesLogin);
 }
 
 message Cliente {
@@ -67,4 +68,20 @@ message RespuestaVerificarExistenciaCliente {
 message RespuestaVerificarClienteActivo {
   bool existe = 1;
   bool activo = 2;
+}
+
+message SolicitudValidarCredencialesLogin {
+  string email = 1;
+  string password = 2;
+}
+
+message RespuestaValidarCredencialesLogin {
+  bool credenciales_validas = 1;
+  optional int64 usuario_id = 2;
+
+  optional int64 cliente_id = 3;
+
+  optional string email = 4;
+
+  optional string rol = 5;
 }

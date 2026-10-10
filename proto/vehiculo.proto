@@ -56,6 +56,8 @@ message SolicitudIdVehiculo {
 
 message SolicitudConsultarVehiculos {
   optional bool activo = 1;
+  optional rentar.comun.v1.TipoVehiculo tipo_vehiculo = 2;
+  repeated int64 ids = 3;
 }
 
 message RespuestaConsultarVehiculos {
