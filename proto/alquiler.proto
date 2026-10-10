@@ -1,0 +1,106 @@
+syntax = "proto3";
+
+package rentar.alquiler.v1;
+
+option java_multiple_files = true;
+option java_package = "com.rentar.proto.alquiler";
+
+import "comun.proto";
+
+service ServicioAlquileres {
+
+  rpc CrearReserva(SolicitudCrearReserva) returns (Reserva);
+
+  rpc ConsultarReservas(SolicitudConsultarReservas)
+      returns (RespuestaConsultarReservas);
+
+  rpc CancelarReserva(SolicitudCancelarReserva) returns (Reserva);
+
+  rpc ConsultarHistorial(SolicitudConsultarHistorial)
+      returns (RespuestaConsultarHistorial);
+
+  rpc ConsultarVehiculosOcupados(SolicitudConsultarVehiculosOcupados)
+      returns (RespuestaConsultarVehiculosOcupados);
+}
+
+message Reserva {
+  int64 id = 1;
+
+  int64 cliente_id = 2;
+  int64 vehiculo_id = 3;
+
+  string fecha_inicio = 4;
+  string fecha_fin = 5;
+
+  double precio_diario = 6;
+  double importe_total = 7;
+
+  rentar.comun.v1.EstadoReserva estado = 8;
+}
+
+message SolicitudCrearReserva {
+
+  int64 cliente_id = 1;
+  int64 vehiculo_id = 2;
+
+  rentar.comun.v1.Periodo periodo = 3;
+
+  double precio_diario = 4;
+}
+
+message SolicitudConsultarReservas {
+  optional int64 cliente_id = 1;
+
+  repeated int64 vehiculo_ids = 2;
+
+  optional rentar.comun.v1.EstadoReserva estado = 3;
+
+  optional string fecha_desde = 4;
+  optional string fecha_hasta = 5;
+}
+
+message RespuestaConsultarReservas {
+  repeated Reserva reservas = 1;
+}
+
+message SolicitudCancelarReserva {
+  int64 reserva_id = 1;
+
+  int64 cliente_id = 2;
+}
+
+message SolicitudConsultarHistorial {
+
+  int64 cliente_id = 1;
+}
+
+enum EstadoHistorial {
+  ESTADO_HISTORIAL_NO_ESPECIFICADO = 0;
+  FINALIZADA = 1;
+  CANCELADA = 2;
+}
+
+message HistorialAlquiler {
+  int64 reserva_id = 1;
+  int64 vehiculo_id = 2;
+
+  string fecha_inicio = 3;
+  string fecha_fin = 4;
+
+  int64 cantidad_dias = 5;
+
+  double importe_total = 6;
+  EstadoHistorial estado = 7;
+}
+
+message RespuestaConsultarHistorial {
+  repeated HistorialAlquiler alquileres = 1;
+}
+
+message SolicitudConsultarVehiculosOcupados {
+  rentar.comun.v1.Periodo periodo = 1;
+}
+
+message RespuestaConsultarVehiculosOcupados {
+  repeated int64 vehiculo_ids = 1;
+}
