@@ -2,24 +2,36 @@ syntax = "proto3";
 
 package rentar.cliente.v1;
 
-import "comun.proto";
+option java_multiple_files = true;
+option java_package = "com.rentar.proto.cliente";
 
 service ServicioClientes {
+
   rpc CrearCliente(SolicitudCrearCliente) returns (Cliente);
+
   rpc ActualizarCliente(SolicitudActualizarCliente) returns (Cliente);
-  rpc DarDeBajaCliente(SolicitudIdCliente) returns (rentar.comun.v1.ResultadoOperacion);
+
+  rpc DarDeBajaCliente(SolicitudIdCliente) returns (Cliente);
+
   rpc ReactivarCliente(SolicitudIdCliente) returns (Cliente);
 
-  rpc ConsultarClientes(SolicitudConsultarClientes) returns (RespuestaConsultarClientes);
+  rpc ConsultarClientes(SolicitudConsultarClientes)
+      returns (RespuestaConsultarClientes);
+
   rpc ConsultarCliente(SolicitudIdCliente) returns (Cliente);
-  rpc VerificarExistenciaCliente(SolicitudIdCliente) returns (RespuestaVerificarExistenciaCliente);
-  rpc VerificarClienteActivo(SolicitudIdCliente) returns (RespuestaVerificarClienteActivo);
-  rpc ValidarCredencialesLogin(SolicitudValidarCredencialesLogin) returns (RespuestaValidarCredencialesLogin);
+
+  rpc VerificarClienteActivo(SolicitudIdCliente)
+      returns (RespuestaVerificarClienteActivo);
+
+  rpc ValidarCredencialesLogin(SolicitudValidarCredencialesLogin)
+      returns (RespuestaValidarCredencialesLogin);
 }
 
 message Cliente {
   int64 id = 1;
+
   int64 usuario_id = 2;
+
   string email = 3;
   string documento = 4;
   string nombre = 5;
@@ -27,12 +39,15 @@ message Cliente {
   optional string telefono = 7;
 
   optional string fecha_nacimiento = 8;
+
   bool activo = 9;
 }
 
 message SolicitudCrearCliente {
   string email = 1;
+
   string password = 2;
+
   string documento = 3;
   string nombre = 4;
   string apellido = 5;
@@ -46,6 +61,7 @@ message SolicitudActualizarCliente {
   string nombre = 2;
   string apellido = 3;
   optional string telefono = 4;
+
   optional string fecha_nacimiento = 5;
 }
 
@@ -54,15 +70,12 @@ message SolicitudIdCliente {
 }
 
 message SolicitudConsultarClientes {
+
   bool incluir_inactivos = 1;
 }
 
 message RespuestaConsultarClientes {
   repeated Cliente clientes = 1;
-}
-
-message RespuestaVerificarExistenciaCliente {
-  bool existe = 1;
 }
 
 message RespuestaVerificarClienteActivo {

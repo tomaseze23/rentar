@@ -2,31 +2,49 @@ syntax = "proto3";
 
 package rentar.vehiculo.v1;
 
+option java_multiple_files = true;
+option java_package = "com.rentar.proto.vehiculo";
+
 import "comun.proto";
 
 service ServicioVehiculos {
+
   rpc CrearVehiculo(SolicitudCrearVehiculo) returns (Vehiculo);
+
   rpc ActualizarVehiculo(SolicitudActualizarVehiculo) returns (Vehiculo);
-  rpc DarDeBajaVehiculo(SolicitudIdVehiculo) returns (rentar.comun.v1.ResultadoOperacion);
+
+  rpc DarDeBajaVehiculo(SolicitudIdVehiculo) returns (Vehiculo);
+
   rpc ReactivarVehiculo(SolicitudIdVehiculo) returns (Vehiculo);
 
-  rpc ConsultarVehiculos(SolicitudConsultarVehiculos) returns (RespuestaConsultarVehiculos);
+  rpc ConsultarVehiculos(SolicitudConsultarVehiculos)
+      returns (RespuestaConsultarVehiculos);
+
   rpc ConsultarVehiculo(SolicitudIdVehiculo) returns (Vehiculo);
-  rpc ConsultarDisponibilidad(SolicitudConsultarDisponibilidad) returns (RespuestaConsultarDisponibilidad);
-  rpc ActualizarEstadoVehiculo(SolicitudActualizarEstadoVehiculo) returns (Vehiculo);
-  rpc VerificarVehiculoParaReserva(SolicitudVerificarVehiculoParaReserva) returns (RespuestaVerificarVehiculoParaReserva);
+
+  rpc ConsultarDisponibilidad(SolicitudConsultarDisponibilidad)
+      returns (RespuestaConsultarDisponibilidad);
+
+  rpc ActualizarEstadoVehiculo(SolicitudActualizarEstadoVehiculo)
+      returns (Vehiculo);
 }
 
 message Vehiculo {
   int64 id = 1;
+
   string patente = 2;
   string marca = 3;
   string modelo = 4;
+
   string anio = 5;
+
   optional string color = 6;
   rentar.comun.v1.TipoVehiculo tipo_vehiculo = 7;
+
   double precio_diario = 8;
+
   rentar.comun.v1.EstadoVehiculo estado = 9;
+
   bool activo = 10;
 }
 
@@ -55,8 +73,11 @@ message SolicitudIdVehiculo {
 }
 
 message SolicitudConsultarVehiculos {
+
   optional bool activo = 1;
+
   optional rentar.comun.v1.TipoVehiculo tipo_vehiculo = 2;
+
   repeated int64 ids = 3;
 }
 
@@ -65,46 +86,21 @@ message RespuestaConsultarVehiculos {
 }
 
 message SolicitudConsultarDisponibilidad {
-  rentar.comun.v1.Periodo periodo = 1;
-  optional rentar.comun.v1.TipoVehiculo tipo_vehiculo = 2;
-  optional string marca = 3;
-  optional string modelo = 4;
-  optional double precio_min = 5;
-  optional double precio_max = 6;
-  repeated int64 vehiculos_ocupados_ids = 7;
-}
+  optional rentar.comun.v1.TipoVehiculo tipo_vehiculo = 1;
+  optional string marca = 2;
+  optional string modelo = 3;
+  optional double precio_min = 4;
+  optional double precio_max = 5;
 
-message VehiculoDisponible {
-  int64 id = 1;
-  string patente = 2;
-  string marca = 3;
-  string modelo = 4;
-  string anio = 5;
-  optional string color = 6;
-  rentar.comun.v1.TipoVehiculo tipo_vehiculo = 7;
-  double precio_diario = 8;
+  repeated int64 vehiculos_ocupados_ids = 6;
 }
 
 message RespuestaConsultarDisponibilidad {
-  repeated VehiculoDisponible vehiculos = 1;
+
+  repeated Vehiculo vehiculos = 1;
 }
 
 message SolicitudActualizarEstadoVehiculo {
   int64 vehiculo_id = 1;
   rentar.comun.v1.EstadoVehiculo estado = 2;
-}
-
-message SolicitudVerificarVehiculoParaReserva {
-  int64 vehiculo_id = 1;
-  rentar.comun.v1.Periodo periodo = 2;
-
-  bool periodo_ocupado = 3;
-}
-
-message RespuestaVerificarVehiculoParaReserva {
-  bool existe = 1;
-  bool activo = 2;
-  bool disponible = 3;
-  optional Vehiculo vehiculo = 4;
-  optional string motivo = 5;
 }
