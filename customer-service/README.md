@@ -5,7 +5,7 @@ Servicio responsable del dominio **clientes** de Rentar (Hito 2). Implementa el 
 y es el único dueño de la base `rentar_clientes`.
 
 - **Lenguaje:** Java 21 + Spring Boot 4.1 (Spring gRPC). El API Gateway está en Node.
-- **Puerto gRPC:** `9091` (configurable con `GRPC_PORT`).
+- **Puerto gRPC:** `9092` (configurable con `GRPC_PORT`).
 - **Base de datos:** PostgreSQL `rentar_clientes`, creada con los scripts de [`../database`](../database).
 
 ## Operaciones
@@ -63,7 +63,7 @@ docker compose up --build
 ```
 
 Levanta PostgreSQL (crea las tres bases con los scripts de `database/` la primera vez) y el
-Customer Service en `localhost:9091`. `docker compose down -v` borra las bases para empezar de cero.
+Customer Service en `localhost:9092`. `docker compose down -v` borra las bases para empezar de cero.
 
 La imagen se construye desde la raíz porque necesita `proto/cliente.proto`:
 
@@ -74,16 +74,16 @@ docker build -f customer-service/Dockerfile -t rentar/customer-service .
 ## Probarlo a mano
 
 El servicio tiene *reflection* habilitado, así que se puede usar Postman (New → gRPC →
-`localhost:9091`) o [grpcurl](https://github.com/fullstorydev/grpcurl) sin cargar el `.proto`:
+`localhost:9092`) o [grpcurl](https://github.com/fullstorydev/grpcurl) sin cargar el `.proto`:
 
 ```bash
-grpcurl -plaintext localhost:9091 list rentar.cliente.v1.ServicioClientes
+grpcurl -plaintext localhost:9092 list rentar.cliente.v1.ServicioClientes
 
 grpcurl -plaintext -d '{"email":"juan@mail.com","password":"secreto123","documento":"30123456",
   "nombre":"Juan","apellido":"Pérez","fecha_nacimiento":"1990-05-20"}' \
-  localhost:9091 rentar.cliente.v1.ServicioClientes/CrearCliente
+  localhost:9092 rentar.cliente.v1.ServicioClientes/CrearCliente
 
-grpcurl -plaintext -d '{"id": 1}' localhost:9091 rentar.cliente.v1.ServicioClientes/VerificarClienteActivo
+grpcurl -plaintext -d '{"id": 1}' localhost:9092 rentar.cliente.v1.ServicioClientes/VerificarClienteActivo
 ```
 
 ## Tests

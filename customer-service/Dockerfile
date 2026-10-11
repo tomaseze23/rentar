@@ -20,5 +20,5 @@ WORKDIR /app
 COPY --from=build /app/customer-service/target/customer-service-*.jar app.jar
 
 # Puerto gRPC
-EXPOSE 9091
+EXPOSE 9092
 ENTRYPOINT ["java", "-jar", "app.jar"]
