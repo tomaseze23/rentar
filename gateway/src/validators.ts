@@ -105,3 +105,49 @@ export function validarCliente(body: any, esAlta: boolean): DatosCliente {
     fechaNacimiento: fecha || undefined,
   };
 }
+
+export interface DatosReserva {
+  vehiculoId: string;
+  fechaInicio: string;
+  fechaFin: string;
+}
+
+// Acepta yyyy-MM-ddTHH:mm o yyyy-MM-ddTHH:mm:ss (hora local, sin zona). Devuelve siempre con segundos.
+const FECHA_HORA = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2})?$/;
+const conSegundos = (s: string) => (s.length === 16 ? `${s}:00` : s);
+
+export function validarReserva(body: any): DatosReserva {
+  const errores: string[] = [];
+
+  const idRaw = body?.vehiculoId;
+  const vehiculoId = idRaw === undefined || idRaw === null ? '' : String(idRaw).trim();
+  if (!vehiculoId) errores.push('El ID del vehículo es obligatorio');
+  else if (!/^\d+$/.test(vehiculoId)) errores.push('El ID del vehículo debe ser numérico');
+
+  const leer = (valor: unknown, nombre: string): string | null => {
+    if (typeof valor !== 'string' || !valor.trim()) {
+      errores.push(`La fecha de ${nombre} es obligatoria`);
+      return null;
+    }
+    const v = valor.trim();
+    if (!FECHA_HORA.test(v) || isNaN(new Date(v).getTime())) {
+      errores.push(`La fecha de ${nombre} debe tener formato yyyy-MM-ddTHH:mm`);
+      return null;
+    }
+    return conSegundos(v);
+  };
+  const inicio = leer(body?.fechaInicio, 'inicio');
+  const fin = leer(body?.fechaFin, 'fin');
+
+  if (inicio && fin) {
+    if (new Date(fin).getTime() <= new Date(inicio).getTime()) {
+      errores.push('La fecha de fin debe ser posterior a la fecha de inicio');
+    }
+    if (new Date(inicio).getTime() < Date.now()) {
+      errores.push('La fecha de inicio debe ser futura');
+    }
+  }
+
+  if (errores.length > 0) throw new HttpError(400, errores.join(', '));
+  return { vehiculoId, fechaInicio: inicio!, fechaFin: fin! };
+}
