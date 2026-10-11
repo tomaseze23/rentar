@@ -52,7 +52,32 @@ const handlers: ServicioVehiculosHandlers = {
         cb(null, { vehiculos });
     },
 
-    //los demás métodos se agrgean después, igual que estos.
+      ActualizarVehiculo: (call, cb) => {
+        const r = call.request;
+        const v = buscar(r.id);
+        if (!v) return cb(noEncontrado(r.id));
+        Object.assign(v, {
+          marca: r.marca, modelo: r.modelo, anio: r.anio, color: r.color,
+          tipoVehiculo: r.tipoVehiculo, precioDiario: r.precioDiario,
+        });
+        cb(null, v);
+      },
+
+      DarDeBajaVehiculo: (call, cb) => {
+        const v = buscar(call.request.id);
+        if (!v) return cb(noEncontrado(call.request.id));
+        v.activo = false;
+        cb(null, v);
+      },
+
+      ReactivarVehiculo: (call, cb) => {
+        const v = buscar(call.request.id);
+        if (!v) return cb(noEncontrado(call.request.id));
+        if (v.activo) return cb(grpcError(status.FAILED_PRECONDITION, `El vehículo ${v.id} ya se encuentra activo`));
+        v.activo = true;
+        cb(null, v);
+      },
+
 } as ServicioVehiculosHandlers;
 
 
