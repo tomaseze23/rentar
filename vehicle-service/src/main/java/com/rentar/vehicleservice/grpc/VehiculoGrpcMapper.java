@@ -6,40 +6,56 @@ import com.rentar.vehicleservice.entities.Vehiculo;
 
 public class VehiculoGrpcMapper {
 
-    public static com.rentar.vehicleservice.grpc.Vehiculo toProto(Vehiculo v) {
-        return com.rentar.vehicleservice.grpc.Vehiculo.newBuilder()
+    private static TipoVehiculo mapTipo(com.rentar.proto.comun.TipoVehiculo t) {
+        if (t == null
+                || t == com.rentar.proto.comun.TipoVehiculo.TIPO_VEHICULO_NO_ESPECIFICADO
+                || t == com.rentar.proto.comun.TipoVehiculo.UNRECOGNIZED) {
+            return null;
+        }
+        return TipoVehiculo.valueOf(t.name());
+    }
+
+    public static com.rentar.proto.vehiculo.Vehiculo toProto(Vehiculo v) {
+        var builder = com.rentar.proto.vehiculo.Vehiculo.newBuilder()
                 .setId(v.getId())
                 .setPatente(v.getPatente())
                 .setMarca(v.getMarca())
                 .setModelo(v.getModelo())
                 .setAnio(v.getAnio())
-                .setColor(v.getColor() != null ? v.getColor() : "")
-                .setTipoVehiculo(com.rentar.vehicleservice.grpc.TipoVehiculo.valueOf(v.getTipoVehiculo().name()))
                 .setPrecioDiario(v.getPrecioDiario())
-                .setEstado(com.rentar.vehicleservice.grpc.EstadoVehiculo.valueOf(v.getEstado().name()))
-                .setActivo(v.getActivo())
-                .build();
+                .setActivo(v.getActivo());
+
+        if (v.getColor() != null) {
+            builder.setColor(v.getColor());
+        }
+        if (v.getTipoVehiculo() != null) {
+            builder.setTipoVehiculo(com.rentar.proto.comun.TipoVehiculo.valueOf(v.getTipoVehiculo().name()));
+        }
+        if (v.getEstado() != null) {
+            builder.setEstado(com.rentar.proto.comun.EstadoVehiculo.valueOf(v.getEstado().name()));
+        }
+        return builder.build();
     }
 
-    public static Vehiculo fromCrearRequest(CrearVehiculoRequest r) {
+    public static Vehiculo fromCrearRequest(com.rentar.proto.vehiculo.SolicitudCrearVehiculo r) {
         Vehiculo v = new Vehiculo();
         v.setPatente(r.getPatente());
         v.setMarca(r.getMarca());
         v.setModelo(r.getModelo());
         v.setAnio(r.getAnio());
-        v.setColor(r.getColor());
-        v.setTipoVehiculo(TipoVehiculo.valueOf(r.getTipoVehiculo().name()));
+        v.setColor(r.hasColor() ? r.getColor() : null);
+        v.setTipoVehiculo(mapTipo(r.getTipoVehiculo()));
         v.setPrecioDiario(r.getPrecioDiario());
         return v;
     }
 
-    public static Vehiculo fromModificarRequest(ModificarVehiculoRequest r) {
+    public static Vehiculo fromActualizarRequest(com.rentar.proto.vehiculo.SolicitudActualizarVehiculo r) {
         Vehiculo v = new Vehiculo();
         v.setMarca(r.getMarca());
         v.setModelo(r.getModelo());
         v.setAnio(r.getAnio());
-        v.setColor(r.getColor());
-        v.setTipoVehiculo(TipoVehiculo.valueOf(r.getTipoVehiculo().name()));
+        v.setColor(r.hasColor() ? r.getColor() : null);
+        v.setTipoVehiculo(mapTipo(r.getTipoVehiculo()));
         v.setPrecioDiario(r.getPrecioDiario());
         return v;
     }

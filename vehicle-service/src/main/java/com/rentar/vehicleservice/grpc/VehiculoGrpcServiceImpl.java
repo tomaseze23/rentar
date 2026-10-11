@@ -1,16 +1,17 @@
 package com.rentar.vehicleservice.grpc;
 
-import com.rentar.vehicleservice.entities.EstadoVehiculo;
+import com.rentar.proto.vehiculo.*;
 import com.rentar.vehicleservice.exceptions.PatenteDuplicadaException;
 import com.rentar.vehicleservice.exceptions.VehiculoInvalidoException;
 import com.rentar.vehicleservice.exceptions.VehiculoNoEncontradoException;
+import com.rentar.vehicleservice.exceptions.VehiculoYaActivoException;
 import com.rentar.vehicleservice.services.VehiculoDomainService;
 import io.grpc.Status;
 import io.grpc.stub.StreamObserver;
 import net.devh.boot.grpc.server.service.GrpcService;
 
 @GrpcService
-public class VehiculoGrpcServiceImpl extends VehiculoServiceGrpc.VehiculoServiceImplBase {
+public class VehiculoGrpcServiceImpl extends ServicioVehiculosGrpc.ServicioVehiculosImplBase {
 
     private final VehiculoDomainService domainService;
 
@@ -19,12 +20,10 @@ public class VehiculoGrpcServiceImpl extends VehiculoServiceGrpc.VehiculoService
     }
 
     @Override
-    public void crearVehiculo(CrearVehiculoRequest request, StreamObserver<VehiculoResponse> responseObserver) {
+    public void crearVehiculo(SolicitudCrearVehiculo request, StreamObserver<com.rentar.proto.vehiculo.Vehiculo> responseObserver) {
         try {
             var vehiculo = domainService.crear(VehiculoGrpcMapper.fromCrearRequest(request));
-            responseObserver.onNext(VehiculoResponse.newBuilder()
-                    .setVehiculo(VehiculoGrpcMapper.toProto(vehiculo))
-                    .build());
+            responseObserver.onNext(VehiculoGrpcMapper.toProto(vehiculo));
             responseObserver.onCompleted();
         } catch (PatenteDuplicadaException e) {
             responseObserver.onError(Status.ALREADY_EXISTS.withDescription(e.getMessage()).asRuntimeException());
@@ -34,12 +33,10 @@ public class VehiculoGrpcServiceImpl extends VehiculoServiceGrpc.VehiculoService
     }
 
     @Override
-    public void modificarVehiculo(ModificarVehiculoRequest request, StreamObserver<VehiculoResponse> responseObserver) {
+    public void actualizarVehiculo(SolicitudActualizarVehiculo request, StreamObserver<com.rentar.proto.vehiculo.Vehiculo> responseObserver) {
         try {
-            var vehiculo = domainService.modificar(request.getId(), VehiculoGrpcMapper.fromModificarRequest(request));
-            responseObserver.onNext(VehiculoResponse.newBuilder()
-                    .setVehiculo(VehiculoGrpcMapper.toProto(vehiculo))
-                    .build());
+            var vehiculo = domainService.modificar(request.getId(), VehiculoGrpcMapper.fromActualizarRequest(request));
+            responseObserver.onNext(VehiculoGrpcMapper.toProto(vehiculo));
             responseObserver.onCompleted();
         } catch (VehiculoNoEncontradoException e) {
             responseObserver.onError(Status.NOT_FOUND.withDescription(e.getMessage()).asRuntimeException());
@@ -49,10 +46,11 @@ public class VehiculoGrpcServiceImpl extends VehiculoServiceGrpc.VehiculoService
     }
 
     @Override
-    public void bajaVehiculo(BajaVehiculoRequest request, StreamObserver<BajaVehiculoResponse> responseObserver) {
+    public void darDeBajaVehiculo(SolicitudIdVehiculo request, StreamObserver<com.rentar.proto.vehiculo.Vehiculo> responseObserver) {
         try {
             domainService.bajaLogica(request.getId());
-            responseObserver.onNext(BajaVehiculoResponse.newBuilder().setExito(true).build());
+            var vehiculo = domainService.consultar(request.getId());
+            responseObserver.onNext(VehiculoGrpcMapper.toProto(vehiculo));
             responseObserver.onCompleted();
         } catch (VehiculoNoEncontradoException e) {
             responseObserver.onError(Status.NOT_FOUND.withDescription(e.getMessage()).asRuntimeException());
@@ -60,22 +58,33 @@ public class VehiculoGrpcServiceImpl extends VehiculoServiceGrpc.VehiculoService
     }
 
     @Override
-    public void listarVehiculos(ListarVehiculosRequest request, StreamObserver<ListarVehiculosResponse> responseObserver) {
+    public void reactivarVehiculo(SolicitudIdVehiculo request, StreamObserver<com.rentar.proto.vehiculo.Vehiculo> responseObserver) {
+        try {
+            var vehiculo = domainService.reactivar(request.getId());
+            responseObserver.onNext(VehiculoGrpcMapper.toProto(vehiculo));
+            responseObserver.onCompleted();
+        } catch (VehiculoNoEncontradoException e) {
+            responseObserver.onError(Status.NOT_FOUND.withDescription(e.getMessage()).asRuntimeException());
+        } catch (VehiculoYaActivoException e) {
+            responseObserver.onError(Status.FAILED_PRECONDITION.withDescription(e.getMessage()).asRuntimeException());
+        }
+    }
+
+    @Override
+    public void consultarVehiculos(SolicitudConsultarVehiculos request, StreamObserver<RespuestaConsultarVehiculos> responseObserver) {
         Boolean activo = request.hasActivo() ? request.getActivo() : null;
         var vehiculos = domainService.listar(activo);
-        var builder = ListarVehiculosResponse.newBuilder();
+        var builder = RespuestaConsultarVehiculos.newBuilder();
         vehiculos.forEach(v -> builder.addVehiculos(VehiculoGrpcMapper.toProto(v)));
         responseObserver.onNext(builder.build());
         responseObserver.onCompleted();
     }
 
     @Override
-    public void consultarVehiculo(ConsultarVehiculoRequest request, StreamObserver<VehiculoResponse> responseObserver) {
+    public void consultarVehiculo(SolicitudIdVehiculo request, StreamObserver<com.rentar.proto.vehiculo.Vehiculo> responseObserver) {
         try {
             var vehiculo = domainService.consultar(request.getId());
-            responseObserver.onNext(VehiculoResponse.newBuilder()
-                    .setVehiculo(VehiculoGrpcMapper.toProto(vehiculo))
-                    .build());
+            responseObserver.onNext(VehiculoGrpcMapper.toProto(vehiculo));
             responseObserver.onCompleted();
         } catch (VehiculoNoEncontradoException e) {
             responseObserver.onError(Status.NOT_FOUND.withDescription(e.getMessage()).asRuntimeException());
@@ -83,56 +92,44 @@ public class VehiculoGrpcServiceImpl extends VehiculoServiceGrpc.VehiculoService
     }
 
     @Override
-    public void consultarDisponibilidad(ConsultarDisponibilidadRequest request,
-                                        StreamObserver<ListarVehiculosResponse> responseObserver) {
-        var vehiculos = domainService.consultarDisponibilidad(
-                request.hasTipoVehiculo() ? request.getTipoVehiculo().name() : null,
-                request.hasMarca() ? request.getMarca() : null,
-                request.hasModelo() ? request.getModelo() : null,
-                request.hasPrecioMin() ? request.getPrecioMin() : null,
-                request.hasPrecioMax() ? request.getPrecioMax() : null,
-                request.getIdsOcupadosList()
-        );
-        var builder = ListarVehiculosResponse.newBuilder();
-        vehiculos.forEach(v -> builder.addVehiculos(VehiculoGrpcMapper.toProto(v)));
-        responseObserver.onNext(builder.build());
-        responseObserver.onCompleted();
-    }
-
-    @Override
-    public void validarVehiculo(ValidarVehiculoRequest request, StreamObserver<ValidarVehiculoResponse> responseObserver) {
+    public void consultarDisponibilidad(SolicitudConsultarDisponibilidad request,
+                                        StreamObserver<RespuestaConsultarDisponibilidad> responseObserver) {
         try {
-            var vehiculo = domainService.consultar(request.getId());
-            responseObserver.onNext(ValidarVehiculoResponse.newBuilder()
-                    .setExiste(true)
-                    .setActivo(vehiculo.getActivo())
-                    .setVehiculo(VehiculoGrpcMapper.toProto(vehiculo))
-                    .build());
-        } catch (VehiculoNoEncontradoException e) {
-            responseObserver.onNext(ValidarVehiculoResponse.newBuilder()
-                    .setExiste(false)
-                    .setActivo(false)
-                    .build());
+            var vehiculos = domainService.consultarDisponibilidadSimple(
+                    request.hasTipoVehiculo() ? request.getTipoVehiculo().name() : null,
+                    request.hasMarca() ? request.getMarca() : null,
+                    request.hasModelo() ? request.getModelo() : null,
+                    request.hasPrecioMin() ? request.getPrecioMin() : null,
+                    request.hasPrecioMax() ? request.getPrecioMax() : null,
+                    request.getVehiculosOcupadosIdsList()
+            );
+            var builder = RespuestaConsultarDisponibilidad.newBuilder();
+            vehiculos.forEach(v -> builder.addVehiculos(VehiculoGrpcMapper.toProto(v)));
+            responseObserver.onNext(builder.build());
+            responseObserver.onCompleted();
+        } catch (VehiculoInvalidoException e) {
+            responseObserver.onError(Status.INVALID_ARGUMENT.withDescription(e.getMessage()).asRuntimeException());
         }
-        responseObserver.onCompleted();
     }
 
     @Override
-    public void actualizarEstado(ActualizarEstadoRequest request, StreamObserver<VehiculoResponse> responseObserver) {
+    public void actualizarEstadoVehiculo(SolicitudActualizarEstadoVehiculo request,
+                                         StreamObserver<com.rentar.proto.vehiculo.Vehiculo> responseObserver) {
         try {
-            EstadoVehiculo nuevoEstado = EstadoVehiculo.valueOf(request.getNuevoEstado().name());
-            domainService.actualizarEstado(request.getId(), nuevoEstado);
-            var vehiculo = domainService.consultar(request.getId());
-            responseObserver.onNext(VehiculoResponse.newBuilder()
-                    .setVehiculo(VehiculoGrpcMapper.toProto(vehiculo))
-                    .build());
+            com.rentar.vehicleservice.entities.EstadoVehiculo nuevoEstado =
+                    com.rentar.vehicleservice.entities.EstadoVehiculo.valueOf(request.getEstado().name());
+            domainService.actualizarEstado(request.getVehiculoId(), nuevoEstado);
+            var vehiculo = domainService.consultar(request.getVehiculoId());
+            responseObserver.onNext(VehiculoGrpcMapper.toProto(vehiculo));
             responseObserver.onCompleted();
         } catch (VehiculoNoEncontradoException e) {
             responseObserver.onError(Status.NOT_FOUND.withDescription(e.getMessage()).asRuntimeException());
         } catch (IllegalArgumentException e) {
             responseObserver.onError(Status.INVALID_ARGUMENT
-                    .withDescription("Estado inválido: " + request.getNuevoEstado())
+                    .withDescription("Estado inválido: " + request.getEstado())
                     .asRuntimeException());
         }
     }
+
+
 }

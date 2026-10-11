@@ -7,28 +7,58 @@ option java_package = "com.rentar.proto.vehiculo";
 
 import "comun.proto";
 
+// Servicio de Vehículos (Hito 2 - gRPC).
+// Expone las operaciones que el API Gateway necesita para gestionar y
+// consultar vehículos, coordinando con el Rental Service cuando corresponde
+// (por ejemplo, para validar disponibilidad o actualizar el estado al
+// confirmar/finalizar una reserva).
 service ServicioVehiculos {
 
+  // Crea un vehículo nuevo. Queda en estado DISPONIBLE y activo.
+  // Errores: INVALID_ARGUMENT (campos obligatorios faltantes o año inválido),
+  // ALREADY_EXISTS (patente duplicada).
   rpc CrearVehiculo(SolicitudCrearVehiculo) returns (Vehiculo);
 
+  // Modifica los datos de un vehículo existente. La patente no se puede modificar.
+  // Errores: NOT_FOUND (id inexistente), INVALID_ARGUMENT (campos obligatorios
+  // faltantes o año inválido).
   rpc ActualizarVehiculo(SolicitudActualizarVehiculo) returns (Vehiculo);
 
+  // Baja lógica: marca el vehículo como inactivo. No se elimina de la base.
+  // Errores: NOT_FOUND (id inexistente).
   rpc DarDeBajaVehiculo(SolicitudIdVehiculo) returns (Vehiculo);
 
+  // Reactiva un vehículo dado de baja.
+  // Errores: NOT_FOUND (id inexistente), FAILED_PRECONDITION (el vehículo ya
+  // estaba activo).
   rpc ReactivarVehiculo(SolicitudIdVehiculo) returns (Vehiculo);
 
+  // Lista vehículos. Permite filtrar opcionalmente por activo/inactivo,
+  // por tipo de vehículo y/o por una lista puntual de ids.
   rpc ConsultarVehiculos(SolicitudConsultarVehiculos)
       returns (RespuestaConsultarVehiculos);
 
+  // Consulta un vehículo por id.
+  // Errores: NOT_FOUND (id inexistente).
   rpc ConsultarVehiculo(SolicitudIdVehiculo) returns (Vehiculo);
 
+  // Usado por el API Gateway para la pantalla de disponibilidad: filtra
+  // vehículos activos por tipo, marca, modelo (búsqueda parcial) y rango de
+  // precio, excluyendo los ids que ya están ocupados en el período consultado
+  // (ese cálculo lo hace el Rental Service y el Gateway pasa el resultado acá).
+  // Errores: INVALID_ARGUMENT (precio_min mayor a precio_max).
   rpc ConsultarDisponibilidad(SolicitudConsultarDisponibilidad)
       returns (RespuestaConsultarDisponibilidad);
 
+  // Cambia el estado de un vehículo (DISPONIBLE, RESERVADO, EN_ALQUILER).
+  // Usado por el API Gateway, coordinando con el Rental Service, al
+  // confirmar o finalizar una reserva.
+  // Errores: NOT_FOUND (id inexistente), INVALID_ARGUMENT (estado inválido).
   rpc ActualizarEstadoVehiculo(SolicitudActualizarEstadoVehiculo)
       returns (Vehiculo);
 }
 
+// Representación completa de un vehículo, tal como se devuelve al cliente.
 message Vehiculo {
   int64 id = 1;
 
@@ -48,6 +78,8 @@ message Vehiculo {
   bool activo = 10;
 }
 
+// Datos para dar de alta un vehículo. patente, marca, modelo, anio,
+// tipo_vehiculo y precio_diario son obligatorios; color es opcional.
 message SolicitudCrearVehiculo {
   string patente = 1;
   string marca = 2;
@@ -58,6 +90,7 @@ message SolicitudCrearVehiculo {
   double precio_diario = 7;
 }
 
+// Datos para modificar un vehículo existente. No incluye patente: no es modificable.
 message SolicitudActualizarVehiculo {
   int64 id = 1;
   string marca = 2;
@@ -68,10 +101,12 @@ message SolicitudActualizarVehiculo {
   double precio_diario = 7;
 }
 
+// Identificador de vehículo, reutilizado para consultar, dar de baja y reactivar.
 message SolicitudIdVehiculo {
   int64 id = 1;
 }
 
+// Filtros opcionales para listar vehículos. Sin filtros, trae todos.
 message SolicitudConsultarVehiculos {
 
   optional bool activo = 1;
@@ -85,6 +120,10 @@ message RespuestaConsultarVehiculos {
   repeated Vehiculo vehiculos = 1;
 }
 
+// Todos los campos son opcionales. marca y modelo hacen búsqueda parcial
+// (contiene, sin distinguir mayúsculas). vehiculos_ocupados_ids es la lista
+// de ids a excluir del resultado, calculada por el Rental Service para el
+// período consultado.
 message SolicitudConsultarDisponibilidad {
   optional rentar.comun.v1.TipoVehiculo tipo_vehiculo = 1;
   optional string marca = 2;
