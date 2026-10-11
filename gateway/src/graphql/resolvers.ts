@@ -5,6 +5,7 @@ import { alquileres, clientes, vehiculos } from '../grpc/clients'; // antes solo
 import { clienteDto } from '../mappers';
 import { leerFechaHora, validarCliente } from '../validators'; //suma leer fecha
 import type { TipoVehiculo } from '../generated/rentar/comun/v1/TipoVehiculo';
+import type { EstadoReserva } from '../generated/rentar/comun/v1/EstadoReserva';
 
 // Quién hace la consulta (o null si no hay token).
 // Es un `type` y no una `interface` porque graphql-http exige un tipo con firma de índice.
@@ -124,4 +125,98 @@ export const rootValue = {
       }));
     },
   ),
+
+  reservas: resolver(
+    async (
+      args: { filtro?: { clienteId?: string; vehiculoId?: string; tipoVehiculo?: TipoVehiculo; estado?: EstadoReserva; fechaDesde?: string; fechaHasta?: string } },
+      ctx,
+    ) => {
+      const u = requerir(ctx, 'CLIENTE', 'ADMINISTRADOR');
+      const f = args.filtro ?? {};
+
+      // Un CLIENTE solo ve las suyas; si pide las de otro, FORBIDDEN.
+      let clienteId: string | undefined = f.clienteId != null ? idTexto(f.clienteId, 'clienteId') : undefined;
+      if (u.rol === 'CLIENTE') {
+        if (!u.clienteId) throw new HttpError(403, 'Acceso denegado');
+        if (clienteId !== undefined && clienteId !== u.clienteId) throw new HttpError(403, 'Acceso denegado');
+        clienteId = u.clienteId;
+      }
+
+      const desde = f.fechaDesde ? leerFechaHora(f.fechaDesde, 'desde') : undefined;
+      const hasta = f.fechaHasta ? leerFechaHora(f.fechaHasta, 'hasta') : undefined;
+      if (desde && hasta && new Date(hasta).getTime() <= new Date(desde).getTime()) {
+        throw new HttpError(400, 'fechaHasta debe ser posterior a fechaDesde');
+      }
+
+      // Filtro por vehículo y/o tipo: se resuelve a una lista de ids de vehículo.
+      // OJO: en el contrato, lista vacía = "sin filtro". Si el filtro no encuentra ningún vehículo, hay que cortar acá.
+      let vehiculoIds: string[] = [];
+      if (f.vehiculoId != null) vehiculoIds = [idTexto(f.vehiculoId, 'vehiculoId')];
+      if (f.tipoVehiculo) {
+        const delTipo = await vehiculos.consultarVarios({ tipoVehiculo: f.tipoVehiculo, ids: [] });
+        const ids = delTipo.vehiculos.map((v) => v.id);
+        vehiculoIds = vehiculoIds.length > 0 ? vehiculoIds.filter((id) => ids.includes(id)) : ids;
+        if (vehiculoIds.length === 0) return [];
+      }
+
+      const r = await alquileres.consultarReservas({
+        clienteId, vehiculoIds, estado: f.estado ?? undefined, fechaDesde: desde, fechaHasta: hasta,
+      });
+      if (r.reservas.length === 0) return [];
+
+      // Enriquecer con datos de los otros servicios (nombre del cliente, marca/modelo/patente del vehículo).
+      const idsV = [...new Set(r.reservas.map((x) => x.vehiculoId))];
+      const idsC = [...new Set(r.reservas.map((x) => x.clienteId))];
+      const [vs, cs] = await Promise.all([
+        vehiculos.consultarVarios({ ids: idsV }),
+        Promise.all(idsC.map((id) => clientes.consultar({ id }))),
+      ]);
+      const vPorId = new Map(vs.vehiculos.map((v) => [v.id, v]));
+      const cPorId = new Map(cs.map((c) => [c.id, c]));
+
+      return [...r.reservas]
+        .sort((a, b) => b.fechaInicio.localeCompare(a.fechaInicio)) // de la más reciente a la más antigua
+        .map((x) => {
+          const v = vPorId.get(x.vehiculoId);
+          const c = cPorId.get(x.clienteId);
+          return {
+            id: x.id, clienteId: x.clienteId,
+            cliente: c ? `${c.nombre} ${c.apellido}` : '',
+            vehiculoId: x.vehiculoId,
+            vehiculo: v ? `${v.marca} ${v.modelo}` : '',
+            patente: v?.patente ?? '',
+            fechaInicio: x.fechaInicio, fechaFin: x.fechaFin,
+            precioDiario: x.precioDiario.toFixed(2),
+            importeTotal: x.importeTotal.toFixed(2),
+            estado: x.estado,
+          };
+        });
+    },
+  ),
+
+  historialAlquileres: resolver(async (_args: unknown, ctx) => {
+    const u = requerir(ctx, 'CLIENTE');
+    if (!u.clienteId) throw new HttpError(403, 'Acceso denegado');
+
+    const r = await alquileres.consultarHistorial({ clienteId: u.clienteId });
+    if (r.alquileres.length === 0) return [];
+
+    const vs = await vehiculos.consultarVarios({ ids: [...new Set(r.alquileres.map((x) => x.vehiculoId))] });
+    const vPorId = new Map(vs.vehiculos.map((v) => [v.id, v]));
+
+    return [...r.alquileres]
+      .sort((a, b) => b.fechaInicio.localeCompare(a.fechaInicio)) // del más reciente al más antiguo
+      .map((x) => {
+        const v = vPorId.get(x.vehiculoId);
+        return {
+          id: x.reservaId,
+          vehiculo: v ? `${v.marca} ${v.modelo}` : '',
+          patente: v?.patente ?? '',
+          fechaInicio: x.fechaInicio, fechaFin: x.fechaFin,
+          cantidadDias: Number(x.cantidadDias),
+          importeTotal: x.importeTotal.toFixed(2),
+          estado: x.estado,
+        };
+      });
+  }),
 };
