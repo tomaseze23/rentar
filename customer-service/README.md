@@ -54,6 +54,23 @@ DB_USER=postgres DB_PASSWORD=postgres mvn spring-boot:run
 Variables de entorno: `DB_USER`, `DB_PASSWORD`, `DB_URL` (opcional) y `GRPC_PORT` (opcional).
 Hibernate corre con `ddl-auto=validate`: no crea tablas, sólo verifica que coincidan con el script.
 
+## Con Docker
+
+Desde la raíz del repo:
+
+```bash
+docker compose up --build
+```
+
+Levanta PostgreSQL (crea las tres bases con los scripts de `database/` la primera vez) y el
+Customer Service en `localhost:9091`. `docker compose down -v` borra las bases para empezar de cero.
+
+La imagen se construye desde la raíz porque necesita `proto/cliente.proto`:
+
+```bash
+docker build -f customer-service/Dockerfile -t rentar/customer-service .
+```
+
 ## Probarlo a mano
 
 El servicio tiene *reflection* habilitado, así que se puede usar Postman (New → gRPC →
