@@ -1,9 +1,10 @@
 import { GraphQLError } from 'graphql';
 import type { UsuarioToken, Rol } from '../auth';
 import { HttpError, toHttpError } from '../errors';
-import { clientes } from '../grpc/clients';
+import { alquileres, clientes, vehiculos } from '../grpc/clients'; // antes solo traía clientes
 import { clienteDto } from '../mappers';
-import { validarCliente } from '../validators';
+import { leerFechaHora, validarCliente } from '../validators'; //suma leer fecha
+import type { TipoVehiculo } from '../generated/rentar/comun/v1/TipoVehiculo';
 
 // Quién hace la consulta (o null si no hay token).
 // Es un `type` y no una `interface` porque graphql-http exige un tipo con firma de índice.
@@ -86,4 +87,41 @@ export const rootValue = {
     requerir(ctx, 'ADMINISTRADOR');
     return clienteDto(await clientes.reactivar({ id: idTexto(args.id) }));
   }),
+
+  vehiculosDisponibles: resolver(
+    async (
+      args: { filtro: { fechaInicio: string; fechaFin: string; tipoVehiculo?: TipoVehiculo; marca?: string; modelo?: string; precioMin?: number; precioMax?: number } },
+      ctx,
+    ) => {
+      requerir(ctx, 'CLIENTE');
+      const f = args.filtro;
+      const inicio = leerFechaHora(f.fechaInicio, 'inicio');
+      const fin = leerFechaHora(f.fechaFin, 'fin');
+      if (new Date(fin).getTime() <= new Date(inicio).getTime()) {
+        throw new HttpError(400, 'La fecha de fin debe ser posterior a la fecha de inicio');
+      }
+      if (new Date(inicio).getTime() < Date.now()) throw new HttpError(400, 'La fecha de inicio debe ser futura');
+      if (f.precioMin != null && f.precioMax != null && f.precioMin > f.precioMax) {
+        throw new HttpError(400, 'El precio mínimo no puede ser mayor que el máximo');
+      }
+
+      // 1) Rental: ¿qué vehículos están ocupados en ese período?
+      const ocupados = await alquileres.vehiculosOcupados({ periodo: { fechaInicio: inicio, fechaFin: fin } });
+
+      // 2) Vehicle: activos que cumplen los filtros, excluyendo los ocupados.
+      const r = await vehiculos.disponibilidad({
+        tipoVehiculo: f.tipoVehiculo ?? undefined,
+        marca: f.marca ?? undefined,
+        modelo: f.modelo ?? undefined,
+        precioMin: f.precioMin ?? undefined,
+        precioMax: f.precioMax ?? undefined,
+        vehiculosOcupadosIds: ocupados.vehiculoIds,
+      });
+
+      return r.vehiculos.map((v) => ({
+        id: v.id, patente: v.patente, marca: v.marca, modelo: v.modelo, anio: v.anio,
+        color: v.color ?? null, tipoVehiculo: v.tipoVehiculo, precioDiario: v.precioDiario,
+      }));
+    },
+  ),
 };

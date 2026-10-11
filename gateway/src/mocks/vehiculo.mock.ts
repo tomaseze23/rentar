@@ -20,6 +20,7 @@ let nextId = 4;
 
 const buscar = (id: string | number) => datos.find((v) => String(v.id) == String(id));
 const noEncontrado = (id: string | number) => grpcError(status.NOT_FOUND, `Vehículo no encontrado con ID: ${id}`);
+const contiene = (valor: string, buscado?: string) => !buscado || valor.toLowerCase().includes(buscado.trim().toLowerCase());
 
 const handlers: ServicioVehiculosHandlers = {
     CrearVehiculo: (call, cb) => {
@@ -52,7 +53,7 @@ const handlers: ServicioVehiculosHandlers = {
         cb(null, { vehiculos });
     },
 
-      ActualizarVehiculo: (call, cb) => {
+    ActualizarVehiculo: (call, cb) => {
         const r = call.request;
         const v = buscar(r.id);
         if (!v) return cb(noEncontrado(r.id));
@@ -61,22 +62,37 @@ const handlers: ServicioVehiculosHandlers = {
           tipoVehiculo: r.tipoVehiculo, precioDiario: r.precioDiario,
         });
         cb(null, v);
-      },
+    },
 
-      DarDeBajaVehiculo: (call, cb) => {
+    DarDeBajaVehiculo: (call, cb) => {
         const v = buscar(call.request.id);
         if (!v) return cb(noEncontrado(call.request.id));
         v.activo = false;
         cb(null, v);
-      },
+    },
 
-      ReactivarVehiculo: (call, cb) => {
+    ReactivarVehiculo: (call, cb) => {
         const v = buscar(call.request.id);
         if (!v) return cb(noEncontrado(call.request.id));
         if (v.activo) return cb(grpcError(status.FAILED_PRECONDITION, `El vehículo ${v.id} ya se encuentra activo`));
         v.activo = true;
         cb(null, v);
-      },
+    },
+
+    ConsultarDisponibilidad: (call, cb) => {
+        const r = call.request;
+        if (r.precioMin != null && r.precioMax != null && r.precioMin > r.precioMax) {
+          return cb(grpcError(status.INVALID_ARGUMENT, 'precioMin no puede ser mayor que precioMax'));
+        }
+        const vehiculos = datos
+          .filter((v) => v.activo)
+          .filter((v) => !r.tipoVehiculo || r.tipoVehiculo === 'TIPO_VEHICULO_NO_ESPECIFICADO' || v.tipoVehiculo === r.tipoVehiculo)
+          .filter((v) => contiene(v.marca, r.marca ?? undefined) && contiene(v.modelo, r.modelo ?? undefined))
+          .filter((v) => r.precioMin == null || v.precioDiario >= r.precioMin)
+          .filter((v) => r.precioMax == null || v.precioDiario <= r.precioMax)
+          .filter((v) => !r.vehiculosOcupadosIds.includes(String(v.id)));
+        cb(null, { vehiculos });
+    },
 
 } as ServicioVehiculosHandlers;
 
