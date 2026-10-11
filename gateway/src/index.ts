@@ -7,8 +7,11 @@ import { autenticar, requerirRol } from './auth';
 import { clientesRouter } from './routes/clientes';
 import { reservasRouter } from './routes/reservas';
 import { graphqlHandler } from './graphql';
+import cors from 'cors';
 
 const app = express();
+
+app.use(cors({ origin: config.corsOrigin }));
 
 // 1. Middlewares generales (leen el body JSON de las requests)
 app.use(express.json());

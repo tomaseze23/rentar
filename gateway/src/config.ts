@@ -5,4 +5,5 @@ export const config = {
   clienteAddr: process.env.CLIENTE_ADDR ?? 'localhost:9092',
   alquilerAddr: process.env.ALQUILER_ADDR ?? 'localhost:9093',
   grpcTimeoutMs: Number(process.env.GRPC_TIMEOUT_MS ?? 5000),
+  corsOrigin: process.env.CORS_ORIGIN ?? '*',
 };
