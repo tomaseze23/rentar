@@ -8,7 +8,7 @@ import type { EstadoVehiculo } from '../generated/rentar/comun/v1/EstadoVehiculo
 // forma en que el mock guarda los vehículos (todos los campos son obligatorios)
 interface Vehiculo {
     id: number; patente: string; marca: string; modelo: string; anio: string; color?: string;
-    tipoVehiculo: TipoVehiculo; precioDiario: number; estado EstadoVehiculo; activo: boolean;
+    tipoVehiculo: TipoVehiculo; precioDiario: number; estado: EstadoVehiculo; activo: boolean;
 }
 
 const datos: Vehiculo[] = [
