@@ -1,0 +1,40 @@
+# Levanta la infraestructura de Rentar (Hito 2).
+#   docker compose up --build
+# Para recrear las bases desde cero: docker compose down -v
+
+services:
+
+  postgres:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      - ./database:/scripts:ro
+      - ./database/docker-init.sh:/docker-entrypoint-initdb.d/init.sh:ro
+    healthcheck:
+      # Recién está listo cuando terminaron los scripts y existe rentar_clientes
+      test: ["CMD", "pg_isready", "-h", "localhost", "-U", "postgres", "-d", "rentar_clientes"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  customer-service:
+    build:
+      context: .
+      dockerfile: customer-service/Dockerfile
+    environment:
+      DB_URL: jdbc:postgresql://postgres:5432/rentar_clientes
+      DB_USER: postgres
+      DB_PASSWORD: postgres
+    ports:
+      - "9092:9092"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+volumes:
+  postgres-data:

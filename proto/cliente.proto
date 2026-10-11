@@ -1,3 +1,33 @@
+// =============================================================================
+// Rentar - Servicio de Clientes (Customer Service)
+// =============================================================================
+//
+// Contrato gRPC del servicio responsable del dominio clientes. El servicio es
+// el único dueño de la base rentar_clientes (tablas usuario y cliente): ni el
+// API Gateway ni los demás servicios acceden a ella directamente.
+//
+// Responsabilidades pedidas por el enunciado y RPC que las cubre:
+//   - Consultar clientes                    -> ConsultarClientes
+//   - Consultar un cliente específico       -> ConsultarCliente
+//   - Verificar la existencia de un cliente -> VerificarClienteActivo (campo existe)
+//   - Verificar que un cliente esté activo  -> VerificarClienteActivo (campo activo)
+//   - Validaciones propias de los clientes  -> CrearCliente, ActualizarCliente,
+//                                              DarDeBajaCliente, ReactivarCliente
+// Además valida las credenciales de login. El servicio NO emite el JWT: eso lo
+// hace el API Gateway con los datos de RespuestaValidarCredencialesLogin.
+//
+// Convenciones:
+//   - Las fechas viajan como string ISO-8601 "yyyy-MM-dd" (ej: "1990-05-20").
+//   - Los campos optional ausentes significan "sin dato" (null).
+//
+// Errores: se informan con los códigos de estado estándar de gRPC.
+//   INVALID_ARGUMENT     datos obligatorios faltantes o con formato inválido
+//   NOT_FOUND            el cliente pedido no existe
+//   ALREADY_EXISTS       el email o el documento ya están registrados
+//   FAILED_PRECONDITION  la operación no aplica al estado actual del cliente
+//                        (ej: reactivar un cliente que ya está activo)
+// =============================================================================
+
 syntax = "proto3";
 
 package rentar.cliente.v1;
@@ -7,29 +37,52 @@ option java_package = "com.rentar.proto.cliente";
 
 service ServicioClientes {
 
+  // Alta de un cliente. Crea también su usuario con rol CLIENTE y la
+  // contraseña encriptada.
+  // Errores: INVALID_ARGUMENT, ALREADY_EXISTS (email o documento repetidos).
   rpc CrearCliente(SolicitudCrearCliente) returns (Cliente);
 
+  // Actualiza los datos propios del cliente. El email, el documento y la
+  // contraseña no se modifican por esta vía.
+  // Errores: INVALID_ARGUMENT, NOT_FOUND.
   rpc ActualizarCliente(SolicitudActualizarCliente) returns (Cliente);
 
+  // Baja lógica: marca inactivos al cliente y a su usuario, que deja de poder
+  // iniciar sesión. Devuelve el cliente ya dado de baja.
+  // Errores: NOT_FOUND.
   rpc DarDeBajaCliente(SolicitudIdCliente) returns (Cliente);
 
+  // Revierte la baja lógica: cliente y usuario vuelven a estar activos.
+  // Errores: NOT_FOUND, FAILED_PRECONDITION (el cliente ya estaba activo).
   rpc ReactivarCliente(SolicitudIdCliente) returns (Cliente);
 
+  // Lista los clientes. Por defecto sólo los activos.
   rpc ConsultarClientes(SolicitudConsultarClientes)
       returns (RespuestaConsultarClientes);
 
+  // Devuelve un cliente por su id.
+  // Errores: NOT_FOUND.
   rpc ConsultarCliente(SolicitudIdCliente) returns (Cliente);
 
+  // Indica si el cliente existe y si está activo. Es la consulta que hace el
+  // API Gateway antes de pedirle a Rental Service que cree una reserva: sólo
+  // un cliente con existe = true y activo = true puede alquilar.
+  // No devuelve NOT_FOUND: un cliente inexistente responde existe = false.
   rpc VerificarClienteActivo(SolicitudIdCliente)
       returns (RespuestaVerificarClienteActivo);
 
+  // Valida email y contraseña de un usuario (cliente o administrador).
+  // Credenciales incorrectas, datos vacíos o usuario inactivo no son un error
+  // gRPC: se responde credenciales_validas = false.
   rpc ValidarCredencialesLogin(SolicitudValidarCredencialesLogin)
       returns (RespuestaValidarCredencialesLogin);
 }
 
+// Cliente de Rentar. Nunca incluye la contraseña de su usuario.
 message Cliente {
   int64 id = 1;
 
+  // Usuario con el que el cliente inicia sesión.
   int64 usuario_id = 2;
 
   string email = 3;
@@ -38,30 +91,39 @@ message Cliente {
   string apellido = 6;
   optional string telefono = 7;
 
+  // "yyyy-MM-dd"
   optional string fecha_nacimiento = 8;
 
+  // false si el cliente fue dado de baja.
   bool activo = 9;
 }
 
 message SolicitudCrearCliente {
+  // Obligatorio, con formato de email y único en el sistema.
   string email = 1;
 
+  // Obligatoria. Se guarda encriptada (BCrypt).
   string password = 2;
 
+  // documento, nombre y apellido son obligatorios. El documento es único.
   string documento = 3;
   string nombre = 4;
   string apellido = 5;
   optional string telefono = 6;
 
+  // "yyyy-MM-dd", no puede ser una fecha futura.
   optional string fecha_nacimiento = 7;
 }
 
 message SolicitudActualizarCliente {
   int64 id = 1;
+  // nombre y apellido son obligatorios. Los campos optional ausentes quedan
+  // en null (se reemplazan todos los datos, como un PUT).
   string nombre = 2;
   string apellido = 3;
   optional string telefono = 4;
 
+  // "yyyy-MM-dd", no puede ser una fecha futura.
   optional string fecha_nacimiento = 5;
 }
 
@@ -71,6 +133,7 @@ message SolicitudIdCliente {
 
 message SolicitudConsultarClientes {
 
+  // true para incluir también a los clientes dados de baja.
   bool incluir_inactivos = 1;
 }
 
@@ -80,6 +143,7 @@ message RespuestaConsultarClientes {
 
 message RespuestaVerificarClienteActivo {
   bool existe = 1;
+  // true sólo si el cliente y su usuario están activos.
   bool activo = 2;
 }
 
@@ -88,13 +152,16 @@ message SolicitudValidarCredencialesLogin {
   string password = 2;
 }
 
+// Si credenciales_validas = false, el resto de los campos viene vacío.
 message RespuestaValidarCredencialesLogin {
   bool credenciales_validas = 1;
   optional int64 usuario_id = 2;
 
+  // Sólo presente si el usuario es un cliente (el administrador no tiene).
   optional int64 cliente_id = 3;
 
   optional string email = 4;
 
+  // "ADMINISTRADOR" | "CLIENTE"
   optional string rol = 5;
 }
