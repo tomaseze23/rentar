@@ -6,6 +6,7 @@ import { authRouter } from './routes/auth';
 import { autenticar, requerirRol } from './auth';
 import { clientesRouter } from './routes/clientes';
 import { reservasRouter } from './routes/reservas';
+import { graphqlHandler } from './graphql';
 
 const app = express();
 
@@ -17,10 +18,14 @@ app.get('/health', (_req, res) => {
   res.json({ status: 'ok' });
 });
 
+//REST
 app.use('/api/auth', authRouter);
 app.use('/api/vehiculos', autenticar, requerirRol('ADMINISTRADOR'), vehiculosRouter);
 app.use('/api/clientes', autenticar, requerirRol('ADMINISTRADOR'), clientesRouter);
 app.use('/api/reservas', autenticar, requerirRol('CLIENTE'), reservasRouter);
+
+//GraphQL
+app.all('/graphql', graphqlHandler);
 
 // Cualquier ruta que no exista: 404 con el mismo formato de error
 app.use((_req, _res, next) => next(new HttpError(404, 'Ruta no encontrada')));

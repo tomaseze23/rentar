@@ -151,3 +151,14 @@ export function validarReserva(body: any): DatosReserva {
   if (errores.length > 0) throw new HttpError(400, errores.join(', '));
   return { vehiculoId, fechaInicio: inicio!, fechaFin: fin! };
 }
+
+// Fecha con hora, sin zona: yyyy-MM-ddTHH:mm o yyyy-MM-ddTHH:mm:ss. Devuelve siempre con segundos.
+const FECHA_HORA_GQL = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2})?$/;
+export function leerFechaHora(valor: unknown, nombre: string): string {
+  if (typeof valor !== 'string' || !valor.trim()) throw new HttpError(400, `La fecha de ${nombre} es obligatoria`);
+  const v = valor.trim();
+  if (!FECHA_HORA_GQL.test(v) || isNaN(new Date(v).getTime())) {
+    throw new HttpError(400, `La fecha de ${nombre} debe tener formato yyyy-MM-ddTHH:mm`);
+  }
+  return v.length === 16 ? `${v}:00` : v;
+}
