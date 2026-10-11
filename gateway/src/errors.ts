@@ -20,6 +20,11 @@ const GRPC_TO_HTTP: Partial<Record<number, number>> = {
 export function toHttpError(err: unknown): { status: number; message: string } {
   if (err instanceof HttpError) return { status: err.status, message: err.message };
 
+  // JSON mal formado en el body (lo detecta express.json())
+  if ((err as { type?: string })?.type === 'entity.parse.failed') {
+    return { status: 400, message: 'El cuerpo de la petición no es un JSON válido' };
+  }
+
   const e = err as { code?: number; details?: string; message?: string };
   if (typeof e?.code === 'number' && e.code in Grpc) {
     const status = GRPC_TO_HTTP[e.code] ?? 500;

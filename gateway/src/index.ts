@@ -2,6 +2,8 @@ import express, { NextFunction, Request, Response } from 'express';
 import { config } from './config';
 import { errorBody, toHttpError } from './errors';
 import { vehiculosRouter } from './routes/vehiculos';
+import { authRouter } from './routes/auth';
+import { autenticar, requerirRol } from './auth';
 
 const app = express();
 
@@ -13,7 +15,8 @@ app.get('/health', (_req, res) => {
   res.json({ status: 'ok' });
 });
 
-app.use('/api/vehiculos', vehiculosRouter);
+app.use('/api/auth', authRouter);
+app.use('/api/vehiculos', autenticar, requerirRol('ADMINISTRADOR'), vehiculosRouter);
 
 // 3. Manejo de errores: SIEMPRE al final, después de todas las rutas
 app.use((err: unknown, _req: Request, res: Response, _next: NextFunction) => {
