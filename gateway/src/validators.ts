@@ -53,3 +53,55 @@ export function validarVehiculo(body: any, opts: { patenteObligatoria: boolean }
     precioDiario: precio,
   };
 }
+
+export interface DatosCliente {
+  email?: string;
+  password?: string;
+  documento?: string;
+  nombre: string;
+  apellido: string;
+  telefono?: string;
+  fechaNacimiento?: string;
+}
+
+function fechaValida(s: string): boolean {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(s)) return false;
+  const d = new Date(`${s}T00:00:00Z`);
+  return !isNaN(d.getTime()) && d.toISOString().startsWith(s);
+}
+
+// Alta (esAlta = true): email, password y documento obligatorios. Modificación: solo nombre y apellido.
+export function validarCliente(body: any, esAlta: boolean): DatosCliente {
+  const errores: string[] = [];
+  const texto = (v: unknown) => (typeof v === 'string' ? v.trim() : '');
+
+  const email = texto(body?.email);
+  const password = typeof body?.password === 'string' ? body.password : '';
+  const documento = texto(body?.documento);
+  if (esAlta) {
+    if (!email) errores.push('El email es obligatorio');
+    else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) errores.push('El email no es válido');
+    if (!password) errores.push('La contraseña es obligatoria');
+    if (!documento) errores.push('El documento es obligatorio');
+  }
+
+  const nombre = texto(body?.nombre);
+  if (!nombre) errores.push('El nombre es obligatorio');
+  const apellido = texto(body?.apellido);
+  if (!apellido) errores.push('El apellido es obligatorio');
+
+  const fecha = texto(body?.fechaNacimiento);
+  if (fecha && !fechaValida(fecha)) errores.push('La fecha de nacimiento debe tener formato yyyy-MM-dd');
+
+  if (errores.length > 0) throw new HttpError(400, errores.join(', '));
+
+  return {
+    email: email || undefined,
+    password: password || undefined,
+    documento: documento || undefined,
+    nombre,
+    apellido,
+    telefono: texto(body?.telefono) || undefined,
+    fechaNacimiento: fecha || undefined,
+  };
+}

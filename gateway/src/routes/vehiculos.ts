@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import { vehiculos } from '../grpc/clients';
 import { HttpError } from '../errors';
-import { asyncHandler } from '../http';
+import { asyncHandler, idNumerico } from '../http';
 import { vehiculoDto } from '../mappers';
 import type { TipoVehiculo } from '../generated/rentar/comun/v1/TipoVehiculo';
 import { validarVehiculo } from '../validators';
@@ -9,13 +9,6 @@ import { validarVehiculo } from '../validators';
 export const vehiculosRouter = Router();
 
 const TIPOS = ['SEDAN', 'SUV', 'PICKUP', 'COUPE', 'HATCHBACK'];
-
-//validacion id
-function idNumerico(valor: unknown): string {
-  const id = String(valor);
-  if (!/^\d+$/.test(id)) throw new HttpError(400, 'El id debe ser numérico');
-  return id;
-}
 
 const normalizarPatente = (p: string) => p.replace(/\s/g, '').toUpperCase();
 
