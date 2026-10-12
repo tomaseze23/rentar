@@ -36,6 +36,23 @@ services:
       postgres:
         condition: service_healthy
 
+
+  vehicle-service:
+    build:
+      context: .
+      dockerfile: vehicle-service/Dockerfile
+    environment:
+      GRPC_PORT: 9091
+      DB_URL: jdbc:postgresql://postgres:5432/rentar_vehiculos
+      DB_USER: postgres
+      DB_PASSWORD: postgres
+    ports:
+      - "9091:9091"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+
   gateway:
     build:
       context: .
