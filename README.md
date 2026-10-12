@@ -57,6 +57,16 @@ La aplicación levanta en el puerto **8080**.
 
 Al arrancar por primera vez, se **siembra automáticamente un usuario administrador.**
 
+## Servicio gRPC de alquileres
+
+El servicio independiente de alquileres implementa `rentar.alquiler.v1.ServicioAlquileres` desde `proto/alquiler.proto` y escucha en el puerto **9093**. Requiere la base `rentar_alquileres`; después de crearla, ejecutar `database/03_alquileres.sql` conectado a esa base. Hibernate valida el esquema al iniciar (`ddl-auto=validate`).
+
+Para iniciarlo en Windows, con `DB_USER` y `DB_PASSWORD` definidos:
+
+```bash
+mvnw.cmd -f rental-service\rentalservice\pom.xml spring-boot:run
+```
+
 ## Autenticación y roles
 
 La API está protegida: salvo el login y la documentación, **todos los endpoints requieren un token JWT**.

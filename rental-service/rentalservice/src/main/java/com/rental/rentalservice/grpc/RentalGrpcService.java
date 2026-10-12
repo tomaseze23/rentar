@@ -1,103 +1,163 @@
 package com.rental.rentalservice.grpc;
 
+import com.rentar.proto.alquiler.*;
+import com.rentar.proto.comun.Periodo;
 import com.rental.rentalservice.entities.EstadoReserva;
 import com.rental.rentalservice.entities.Reserva;
 import com.rental.rentalservice.services.ReservaService;
-import com.rentar.rentar.grpc.rental.*;
+import io.grpc.Status;
+import io.grpc.StatusRuntimeException;
 import io.grpc.stub.StreamObserver;
 import net.devh.boot.grpc.server.service.GrpcService;
-import org.springframework.beans.factory.annotation.Autowired;
 
-import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.function.Supplier;
 
 @GrpcService
-public class RentalGrpcService extends RentalServiceGrpc.RentalServiceImplBase {
+public class RentalGrpcService extends ServicioAlquileresGrpc.ServicioAlquileresImplBase {
 
-    @Autowired
-    private ReservaService reservaService;
+    private final ReservaService reservaService;
 
-    @Override
-    public void crearReserva(CrearReservaRequest request, StreamObserver<ReservaResponse> responseObserver) {
-        try {
-            Reserva reserva = new Reserva();
-            reserva.setClienteId(request.getClienteId());
-            reserva.setVehiculoId(request.getVehiculoId());
-            reserva.setFechaInicio(LocalDateTime.parse(request.getFechaInicio()));
-            reserva.setFechaFin(LocalDateTime.parse(request.getFechaFin()));
-            reserva.setPrecioDiario(BigDecimal.valueOf(request.getPrecioDiario()));
-            reserva.setImporteTotal(BigDecimal.valueOf(request.getImporteTotal()));
-
-            Reserva creada = reservaService.crearReserva(reserva);
-            ReservaResponse response = mapToResponse(creada, "Reserva creada exitosamente");
-
-            responseObserver.onNext(response);
-            responseObserver.onCompleted();
-        } catch (Exception e) {
-            responseObserver.onError(e);
-        }
+    public RentalGrpcService(ReservaService reservaService) {
+        this.reservaService = reservaService;
     }
 
     @Override
-    public void cancelarReserva(CancelarReservaRequest request, StreamObserver<ReservaResponse> responseObserver) {
-        try {
-            Reserva cancelada = reservaService.cancelarReserva(request.getReservaId());
-            ReservaResponse response = mapToResponse(cancelada, "Reserva cancelada correctamente");
-
-            responseObserver.onNext(response);
-            responseObserver.onCompleted();
-        } catch (Exception e) {
-            responseObserver.onError(e);
-        }
+    public void crearReserva(SolicitudCrearReserva request, StreamObserver<com.rentar.proto.alquiler.Reserva> observer) {
+        respond(observer, () -> {
+            Periodo periodo = request.getPeriodo();
+            Reserva reserva = reservaService.crearReserva(
+                    request.getClienteId(),
+                    request.getVehiculoId(),
+                    periodo.getFechaInicio(),
+                    periodo.getFechaFin(),
+                    request.getPrecioDiario());
+            return mapReserva(reserva);
+        });
     }
 
     @Override
-    public void obtenerReserva(ObtenerReservaRequest request, StreamObserver<ReservaResponse> responseObserver) {
-        try {
-            Reserva reserva = reservaService.obtenerPorId(request.getReservaId());
-            ReservaResponse response = mapToResponse(reserva, "Reserva encontrada");
-
-            responseObserver.onNext(response);
-            responseObserver.onCompleted();
-        } catch (Exception e) {
-            responseObserver.onError(e);
-        }
-    }
-
-    @Override
-    public void listarReservasPorCliente(ListarPorClienteRequest request, StreamObserver<ListarReservasResponse> responseObserver) {
-        try {
-            List<Reserva> reservas = reservaService.obtenerPorCliente(request.getClienteId());
-            ListarReservasResponse.Builder responseBuilder = ListarReservasResponse.newBuilder();
-
-            for (Reserva r : reservas) {
-                responseBuilder.addReservas(mapToResponse(r, ""));
+    public void consultarReservas(SolicitudConsultarReservas request,
+                                  StreamObserver<RespuestaConsultarReservas> observer) {
+        respond(observer, () -> {
+            Long clienteId = request.hasClienteId() ? request.getClienteId() : null;
+            if (clienteId != null && clienteId <= 0) {
+                throw Status.INVALID_ARGUMENT.withDescription("cliente_id debe ser mayor que cero")
+                        .asRuntimeException();
+            }
+            List<Long> vehiculoIds = request.getVehiculoIdsList();
+            if (vehiculoIds.stream().anyMatch(id -> id <= 0)) {
+                throw Status.INVALID_ARGUMENT.withDescription("vehiculo_ids debe contener IDs mayores que cero")
+                        .asRuntimeException();
             }
 
-            responseObserver.onNext(responseBuilder.build());
-            responseObserver.onCompleted();
-        } catch (Exception e) {
-            responseObserver.onError(e);
-        }
+            EstadoReserva estado = request.hasEstado()
+                    ? mapEstado(request.getEstado())
+                    : null;
+            LocalDateTime desde = request.hasFechaDesde()
+                    ? ReservaService.parseFecha(request.getFechaDesde(), "fecha_desde")
+                    : null;
+            LocalDateTime hasta = request.hasFechaHasta()
+                    ? ReservaService.parseFecha(request.getFechaHasta(), "fecha_hasta")
+                    : null;
+            if (desde != null && hasta != null && !hasta.isAfter(desde)) {
+                throw Status.INVALID_ARGUMENT.withDescription("fecha_hasta debe ser posterior a fecha_desde")
+                        .asRuntimeException();
+            }
+
+            RespuestaConsultarReservas.Builder response = RespuestaConsultarReservas.newBuilder();
+            reservaService.consultarReservas(clienteId, vehiculoIds, estado, desde, hasta)
+                    .forEach(reserva -> response.addReservas(mapReserva(reserva)));
+            return response.build();
+        });
     }
 
     @Override
-    public void obtenerHistorial(HistorialRequest request, StreamObserver<ListarReservasResponse> responseObserver) {
-        listarReservasPorCliente(ListarPorClienteRequest.newBuilder().setClienteId(request.getClienteId()).build(), responseObserver);
+    public void cancelarReserva(SolicitudCancelarReserva request,
+                                StreamObserver<com.rentar.proto.alquiler.Reserva> observer) {
+        respond(observer, () -> mapReserva(
+                reservaService.cancelarReserva(request.getReservaId(), request.getClienteId())));
     }
 
-    private ReservaResponse mapToResponse(Reserva r, String mensaje) {
-        return ReservaResponse.newBuilder()
-                .setId(r.getId())
-                .setClienteId(r.getClienteId())
-                .setVehiculoId(r.getVehiculoId())
-                .setFechaInicio(r.getFechaInicio().toString())
-                .setFechaFin(r.getFechaFin().toString())
-                .setPrecioDiario(r.getPrecioDiario().doubleValue())
-                .setImporteTotal(r.getImporteTotal().doubleValue())
-                .setEstado(EstadoReservaProto.valueOf(r.getEstado().name()))
-                .setMensaje(mensaje)
+    @Override
+    public void consultarHistorial(SolicitudConsultarHistorial request,
+                                   StreamObserver<RespuestaConsultarHistorial> observer) {
+        respond(observer, () -> {
+            LocalDateTime ahora = LocalDateTime.now();
+            RespuestaConsultarHistorial.Builder response = RespuestaConsultarHistorial.newBuilder();
+            for (Reserva reserva : reservaService.obtenerPorCliente(request.getClienteId())) {
+                EstadoHistorial estado = estadoHistorial(reserva, ahora);
+                response.addAlquileres(HistorialAlquiler.newBuilder()
+                        .setReservaId(reserva.getId())
+                        .setVehiculoId(reserva.getVehiculoId())
+                        .setFechaInicio(reserva.getFechaInicio().toString())
+                        .setFechaFin(reserva.getFechaFin().toString())
+                        .setCantidadDias(ReservaService.cantidadDias(reserva.getFechaInicio(), reserva.getFechaFin()))
+                        .setImporteTotal(reserva.getImporteTotal().doubleValue())
+                        .setEstado(estado)
+                        .build());
+            }
+            return response.build();
+        });
+    }
+
+    @Override
+    public void consultarVehiculosOcupados(SolicitudConsultarVehiculosOcupados request,
+                                            StreamObserver<RespuestaConsultarVehiculosOcupados> observer) {
+        respond(observer, () -> {
+            Periodo periodo = request.getPeriodo();
+            return RespuestaConsultarVehiculosOcupados.newBuilder()
+                    .addAllVehiculoIds(reservaService.consultarVehiculosOcupados(
+                            periodo.getFechaInicio(), periodo.getFechaFin()))
+                    .build();
+        });
+    }
+
+    private static EstadoReserva mapEstado(com.rentar.proto.comun.EstadoReserva estado) {
+        return switch (estado) {
+            case PENDIENTE -> EstadoReserva.PENDIENTE;
+            case CONFIRMADA -> EstadoReserva.CONFIRMADA;
+            case CANCELADA -> EstadoReserva.CANCELADA;
+            case ESTADO_RESERVA_NO_ESPECIFICADO -> null;
+            case UNRECOGNIZED -> throw Status.INVALID_ARGUMENT
+                    .withDescription("estado de reserva inválido").asRuntimeException();
+        };
+    }
+
+    private static EstadoHistorial estadoHistorial(Reserva reserva, LocalDateTime ahora) {
+        if (reserva.getEstado() == EstadoReserva.CANCELADA) {
+            return EstadoHistorial.CANCELADA;
+        }
+        if (reserva.getEstado() == EstadoReserva.CONFIRMADA && !reserva.getFechaFin().isAfter(ahora)) {
+            return EstadoHistorial.FINALIZADA;
+        }
+        return EstadoHistorial.ESTADO_HISTORIAL_NO_ESPECIFICADO;
+    }
+
+    private static com.rentar.proto.alquiler.Reserva mapReserva(Reserva reserva) {
+        return com.rentar.proto.alquiler.Reserva.newBuilder()
+                .setId(reserva.getId())
+                .setClienteId(reserva.getClienteId())
+                .setVehiculoId(reserva.getVehiculoId())
+                .setFechaInicio(reserva.getFechaInicio().toString())
+                .setFechaFin(reserva.getFechaFin().toString())
+                .setPrecioDiario(reserva.getPrecioDiario().doubleValue())
+                .setImporteTotal(reserva.getImporteTotal().doubleValue())
+                .setEstado(switch (reserva.getEstado()) {
+                    case PENDIENTE -> com.rentar.proto.comun.EstadoReserva.PENDIENTE;
+                    case CONFIRMADA -> com.rentar.proto.comun.EstadoReserva.CONFIRMADA;
+                    case CANCELADA -> com.rentar.proto.comun.EstadoReserva.CANCELADA;
+                })
                 .build();
+    }
+
+    private static <T> void respond(StreamObserver<T> observer, Supplier<T> operation) {
+        try {
+            observer.onNext(operation.get());
+            observer.onCompleted();
+        } catch (StatusRuntimeException exception) {
+            observer.onError(exception);
+        }
     }
 }

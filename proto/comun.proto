@@ -1,0 +1,34 @@
+syntax = "proto3";
+
+package rentar.comun.v1;
+
+option java_multiple_files = true;
+option java_package = "com.rentar.proto.comun";
+
+enum TipoVehiculo {
+  TIPO_VEHICULO_NO_ESPECIFICADO = 0;
+  SEDAN = 1;
+  SUV = 2;
+  PICKUP = 3;
+  COUPE = 4;
+  HATCHBACK = 5;
+}
+
+enum EstadoVehiculo {
+  ESTADO_VEHICULO_NO_ESPECIFICADO = 0;
+  DISPONIBLE = 1;
+  RESERVADO = 2;
+  EN_ALQUILER = 3;
+}
+
+enum EstadoReserva {
+  ESTADO_RESERVA_NO_ESPECIFICADO = 0;
+  PENDIENTE = 1;
+  CONFIRMADA = 2;
+  CANCELADA = 3;
+}
+
+message Periodo {
+  string fecha_inicio = 1;
+  string fecha_fin = 2;
+}
