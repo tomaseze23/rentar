@@ -73,7 +73,8 @@ public class VehiculoGrpcServiceImpl extends ServicioVehiculosGrpc.ServicioVehic
     @Override
     public void consultarVehiculos(SolicitudConsultarVehiculos request, StreamObserver<RespuestaConsultarVehiculos> responseObserver) {
         Boolean activo = request.hasActivo() ? request.getActivo() : null;
-        var vehiculos = domainService.listar(activo);
+        var tipo = request.hasTipoVehiculo() ? VehiculoGrpcMapper.mapTipo(request.getTipoVehiculo()) : null;
+        var vehiculos = domainService.listar(activo, tipo, request.getIdsList());
         var builder = RespuestaConsultarVehiculos.newBuilder();
         vehiculos.forEach(v -> builder.addVehiculos(VehiculoGrpcMapper.toProto(v)));
         responseObserver.onNext(builder.build());

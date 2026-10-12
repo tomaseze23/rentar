@@ -1,0 +1,6 @@
+# Contexto de build = raíz del repo: sólo se necesitan los proto y el servicio
+*
+!proto/vehiculo.proto
+!proto/comun.proto
+!vehicle-service/pom.xml
+!vehicle-service/src/main/**

@@ -36,13 +36,27 @@ services:
       postgres:
         condition: service_healthy
 
+  vehicle-service:
+    build:
+      context: .
+      dockerfile: vehicle-service/Dockerfile
+    environment:
+      DB_URL: jdbc:postgresql://postgres:5432/rentar_vehiculos
+      DB_USER: postgres
+      DB_PASSWORD: postgres
+    ports:
+      - "9091:9091"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
   gateway:
     build:
       context: .
       dockerfile: gateway/Dockerfile
     environment:
       CLIENTE_ADDR: customer-service:9092
-      VEHICULO_ADDR: ${VEHICULO_ADDR:-host.docker.internal:9091}
+      VEHICULO_ADDR: ${VEHICULO_ADDR:-vehicle-service:9091}
       ALQUILER_ADDR: ${ALQUILER_ADDR:-host.docker.internal:9093}
       JWT_SECRET: ${JWT_SECRET:-secreto-solo-para-desarrollo-no-usar-en-produccion-123456}
     extra_hosts:
@@ -51,5 +65,6 @@ services:
       - "8080:8080"
     depends_on:
       - customer-service
+      - vehicle-service
 volumes:
   postgres-data:

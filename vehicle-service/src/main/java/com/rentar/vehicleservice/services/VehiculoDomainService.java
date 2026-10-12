@@ -1,6 +1,7 @@
 package com.rentar.vehicleservice.services;
 
 import com.rentar.vehicleservice.entities.EstadoVehiculo;
+import com.rentar.vehicleservice.entities.TipoVehiculo;
 import com.rentar.vehicleservice.entities.Vehiculo;
 import com.rentar.vehicleservice.exceptions.PatenteDuplicadaException;
 import com.rentar.vehicleservice.exceptions.VehiculoInvalidoException;
@@ -60,31 +61,22 @@ public class VehiculoDomainService {
                 .orElseThrow(() -> new VehiculoNoEncontradoException(id));
     }
 
-    public List<Vehiculo> listar(Boolean activo) {
-        if (activo == null) {
-            return repository.findAll();
-        }
-        return repository.findByActivo(activo);
+    /**
+     * Lista vehículos aplicando los filtros opcionales del contrato.
+     * activo y tipo en null = sin filtro; ids vacío = sin filtro por ids.
+     */
+    public List<Vehiculo> listar(Boolean activo, TipoVehiculo tipo, List<Long> ids) {
+        List<Vehiculo> base = activo == null ? repository.findAll() : repository.findByActivo(activo);
+        return base.stream()
+                .filter(v -> tipo == null || v.getTipoVehiculo() == tipo)
+                .filter(v -> ids == null || ids.isEmpty() || ids.contains(v.getId()))
+                .toList();
     }
 
     public void actualizarEstado(Long id, EstadoVehiculo nuevoEstado) {
         Vehiculo v = consultar(id);
         v.setEstado(nuevoEstado);
         repository.save(v);
-    }
-
-    public List<Vehiculo> consultarDisponibilidad(
-            String tipoVehiculo, String marca, String modelo,
-            Double precioMin, Double precioMax, List<Long> idsOcupados) {
-
-        return repository.findByActivo(true).stream()
-                .filter(v -> tipoVehiculo == null || v.getTipoVehiculo().name().equals(tipoVehiculo))
-                .filter(v -> marca == null || v.getMarca().equalsIgnoreCase(marca))
-                .filter(v -> modelo == null || v.getModelo().equalsIgnoreCase(modelo))
-                .filter(v -> precioMin == null || v.getPrecioDiario() >= precioMin)
-                .filter(v -> precioMax == null || v.getPrecioDiario() <= precioMax)
-                .filter(v -> idsOcupados == null || !idsOcupados.contains(v.getId()))
-                .toList();
     }
 
     private void validarCamposObligatorios(Vehiculo v) {

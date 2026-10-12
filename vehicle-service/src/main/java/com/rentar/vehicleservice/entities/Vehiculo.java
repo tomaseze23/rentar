@@ -34,6 +34,8 @@ public class Vehiculo {
     @Enumerated(EnumType.STRING)
     private TipoVehiculo tipoVehiculo;
 
+    // El script database/02_vehiculos.sql la crea como NUMERIC(12,2); sin esto ddl-auto=validate falla.
+    @Column(columnDefinition = "NUMERIC(12,2)")
     private Double precioDiario;
 
     @Enumerated(EnumType.STRING)
