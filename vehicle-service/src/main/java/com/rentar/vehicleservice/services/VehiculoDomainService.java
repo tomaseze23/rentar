@@ -36,6 +36,7 @@ public class VehiculoDomainService {
 
     public Vehiculo modificar(Long id, Vehiculo datos) {
         Vehiculo existente = consultar(id);
+        datos.setPatente(existente.getPatente());
         normalizarCampos(datos);
         validarCamposObligatorios(datos);
 
