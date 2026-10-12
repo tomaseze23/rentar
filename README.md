@@ -57,6 +57,24 @@ La aplicación levanta en el puerto **8080**.
 
 Al arrancar por primera vez, se **siembra automáticamente un usuario administrador.**
 
+## Servicio gRPC de alquileres
+
+El servicio independiente de alquileres implementa `rentar.alquiler.v1.ServicioAlquileres` desde `proto/alquiler.proto` y escucha en el puerto **9093**. Requiere la base `rentar_alquileres`; después de crearla, ejecutar `database/03_alquileres.sql` conectado a esa base. Hibernate valida el esquema al iniciar (`ddl-auto=validate`). La conexión se configura mediante `DB_URL`, `DB_USER` y `DB_PASSWORD` (valores locales por defecto: PostgreSQL en `localhost:5432`, usuario/contraseña `postgres`).
+
+Para iniciarlo en Windows:
+
+```bash
+mvnw.cmd -f rental-service\rentalservice\pom.xml spring-boot:run
+```
+
+En Mac/Linux:
+
+```bash
+./rental-service/rentalservice/mvnw -f rental-service/rentalservice/pom.xml spring-boot:run
+```
+
+También se puede levantar junto a PostgreSQL y el Gateway con `docker compose up --build`; el servicio queda disponible en `localhost:9093` y el Gateway lo contacta por `rental-service:9093`.
+
 ## Autenticación y roles
 
 La API está protegida: salvo el login y la documentación, **todos los endpoints requieren un token JWT**.
