@@ -1,6 +1,7 @@
 package com.rental.rentalservice.grpc;
 
 import com.rentar.proto.alquiler.EstadoHistorial;
+import com.rentar.proto.alquiler.HistorialAlquiler;
 import com.rentar.proto.alquiler.RespuestaConsultarHistorial;
 import com.rentar.proto.alquiler.SolicitudConsultarHistorial;
 import com.rental.rentalservice.entities.EstadoReserva;
@@ -38,8 +39,10 @@ class RentalGrpcServiceTest {
         reserva.setId(5L);
         reserva.setClienteId(10L);
         reserva.setVehiculoId(20L);
-        reserva.setFechaInicio(LocalDateTime.now().minusDays(3));
-        reserva.setFechaFin(LocalDateTime.now().minusDays(1));
+        // Un solo instante: con dos llamadas a now() el período mide "2 días + microsegundos" y el ceil da 3.
+        LocalDateTime ahora = LocalDateTime.now();
+        reserva.setFechaInicio(ahora.minusDays(3));
+        reserva.setFechaFin(ahora.minusDays(1));
         reserva.setPrecioDiario(BigDecimal.valueOf(80));
         reserva.setImporteTotal(BigDecimal.valueOf(160));
         reserva.setEstado(EstadoReserva.CONFIRMADA);
@@ -76,5 +79,59 @@ class RentalGrpcServiceTest {
         verify(observer).onError(error.capture());
         assertEquals(Status.Code.PERMISSION_DENIED, Status.fromThrowable(error.getValue()).getCode());
         verify(observer, never()).onNext(any());
+    }
+
+    private static Reserva reserva(long id, EstadoReserva estado, LocalDateTime inicio, LocalDateTime fin) {
+        Reserva reserva = new Reserva();
+        reserva.setId(id);
+        reserva.setClienteId(10L);
+        reserva.setVehiculoId(20L);
+        reserva.setFechaInicio(inicio);
+        reserva.setFechaFin(fin);
+        reserva.setPrecioDiario(BigDecimal.valueOf(100));
+        reserva.setImporteTotal(BigDecimal.valueOf(100));
+        reserva.setEstado(estado);
+        return reserva;
+    }
+
+    @Test
+    void historialSoloIncluyeCanceladasYFinalizadas() {
+        LocalDateTime ahora = LocalDateTime.now();
+        when(reservaService.obtenerPorCliente(10)).thenReturn(List.of(
+                reserva(1L, EstadoReserva.CONFIRMADA, ahora.minusDays(3), ahora.minusDays(2)),
+                reserva(2L, EstadoReserva.CANCELADA, ahora.plusDays(5), ahora.plusDays(6)),
+                reserva(3L, EstadoReserva.CONFIRMADA, ahora.plusDays(5), ahora.plusDays(6)),
+                reserva(4L, EstadoReserva.CONFIRMADA, ahora.minusDays(1), ahora.plusDays(1))));
+
+        @SuppressWarnings("unchecked")
+        StreamObserver<RespuestaConsultarHistorial> observer = mock(StreamObserver.class);
+        grpcService.consultarHistorial(
+                SolicitudConsultarHistorial.newBuilder().setClienteId(10).build(), observer);
+
+        ArgumentCaptor<RespuestaConsultarHistorial> response =
+                ArgumentCaptor.forClass(RespuestaConsultarHistorial.class);
+        verify(observer).onNext(response.capture());
+        // La 3 (futura) y la 4 (en curso) no son historial todavía.
+        assertEquals(List.of(1L, 2L), response.getValue().getAlquileresList().stream()
+                .map(HistorialAlquiler::getReservaId).toList());
+        assertEquals(EstadoHistorial.FINALIZADA, response.getValue().getAlquileres(0).getEstado());
+        assertEquals(EstadoHistorial.CANCELADA, response.getValue().getAlquileres(1).getEstado());
+    }
+
+    @Test
+    void lasFechasSiempreIncluyenSegundos() {
+        when(reservaService.obtenerPorCliente(10)).thenReturn(List.of(reserva(1L, EstadoReserva.CANCELADA,
+                LocalDateTime.of(2027, 1, 10, 10, 0), LocalDateTime.of(2027, 1, 12, 10, 0))));
+
+        @SuppressWarnings("unchecked")
+        StreamObserver<RespuestaConsultarHistorial> observer = mock(StreamObserver.class);
+        grpcService.consultarHistorial(
+                SolicitudConsultarHistorial.newBuilder().setClienteId(10).build(), observer);
+
+        ArgumentCaptor<RespuestaConsultarHistorial> response =
+                ArgumentCaptor.forClass(RespuestaConsultarHistorial.class);
+        verify(observer).onNext(response.capture());
+        assertEquals("2027-01-10T10:00:00", response.getValue().getAlquileres(0).getFechaInicio());
+        assertEquals("2027-01-12T10:00:00", response.getValue().getAlquileres(0).getFechaFin());
     }
 }

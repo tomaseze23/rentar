@@ -67,6 +67,12 @@ Para iniciarlo en Windows:
 mvnw.cmd -f rental-service\rentalservice\pom.xml spring-boot:run
 ```
 
+En Mac/Linux:
+
+```bash
+./rental-service/rentalservice/mvnw -f rental-service/rentalservice/pom.xml spring-boot:run
+```
+
 También se puede levantar junto a PostgreSQL y el Gateway con `docker compose up --build`; el servicio queda disponible en `localhost:9093` y el Gateway lo contacta por `rental-service:9093`.
 
 ## Autenticación y roles

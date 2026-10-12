@@ -21,6 +21,10 @@
         <grpc.version>1.65.1</grpc.version>
         <grpc-spring-boot.version>3.1.0.RELEASE</grpc-spring-boot.version>
         <protobuf.version>3.25.3</protobuf.version>
+        <!-- Lombok reciente: la que trae Spring Boot 3.3.4 (1.18.34) no soporta JDK 23+ -->
+        <lombok.version>1.18.48</lombok.version>
+        <!-- Byte Buddy (lo usa Mockito) reciente: el de Spring Boot 3.3.4 no puede mockear clases en JDK 25 -->
+        <byte-buddy.version>1.18.14</byte-buddy.version>
     </properties>
 
     <dependencyManagement>

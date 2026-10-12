@@ -6,6 +6,7 @@ option java_multiple_files = true;
 option java_package = "com.rentar.proto.comun";
 
 enum TipoVehiculo {
+
   TIPO_VEHICULO_NO_ESPECIFICADO = 0;
   SEDAN = 1;
   SUV = 2;
@@ -15,6 +16,7 @@ enum TipoVehiculo {
 }
 
 enum EstadoVehiculo {
+
   ESTADO_VEHICULO_NO_ESPECIFICADO = 0;
   DISPONIBLE = 1;
   RESERVADO = 2;
@@ -22,6 +24,7 @@ enum EstadoVehiculo {
 }
 
 enum EstadoReserva {
+
   ESTADO_RESERVA_NO_ESPECIFICADO = 0;
   PENDIENTE = 1;
   CONFIRMADA = 2;

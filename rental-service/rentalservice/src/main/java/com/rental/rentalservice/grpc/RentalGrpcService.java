@@ -11,11 +11,15 @@ import io.grpc.stub.StreamObserver;
 import net.devh.boot.grpc.server.service.GrpcService;
 
 import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.function.Supplier;
 
 @GrpcService
 public class RentalGrpcService extends ServicioAlquileresGrpc.ServicioAlquileresImplBase {
+
+    // Formato del contrato: yyyy-MM-ddTHH:mm:ss, siempre con segundos.
+    private static final DateTimeFormatter FORMATO_FECHA = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss");
 
     private final ReservaService reservaService;
 
@@ -88,11 +92,15 @@ public class RentalGrpcService extends ServicioAlquileresGrpc.ServicioAlquileres
             RespuestaConsultarHistorial.Builder response = RespuestaConsultarHistorial.newBuilder();
             for (Reserva reserva : reservaService.obtenerPorCliente(request.getClienteId())) {
                 EstadoHistorial estado = estadoHistorial(reserva, ahora);
+                // Las reservas vigentes o futuras todavía no son parte del historial.
+                if (estado == EstadoHistorial.ESTADO_HISTORIAL_NO_ESPECIFICADO) {
+                    continue;
+                }
                 response.addAlquileres(HistorialAlquiler.newBuilder()
                         .setReservaId(reserva.getId())
                         .setVehiculoId(reserva.getVehiculoId())
-                        .setFechaInicio(reserva.getFechaInicio().toString())
-                        .setFechaFin(reserva.getFechaFin().toString())
+                        .setFechaInicio(formatear(reserva.getFechaInicio()))
+                        .setFechaFin(formatear(reserva.getFechaFin()))
                         .setCantidadDias(ReservaService.cantidadDias(reserva.getFechaInicio(), reserva.getFechaFin()))
                         .setImporteTotal(reserva.getImporteTotal().doubleValue())
                         .setEstado(estado)
@@ -140,8 +148,8 @@ public class RentalGrpcService extends ServicioAlquileresGrpc.ServicioAlquileres
                 .setId(reserva.getId())
                 .setClienteId(reserva.getClienteId())
                 .setVehiculoId(reserva.getVehiculoId())
-                .setFechaInicio(reserva.getFechaInicio().toString())
-                .setFechaFin(reserva.getFechaFin().toString())
+                .setFechaInicio(formatear(reserva.getFechaInicio()))
+                .setFechaFin(formatear(reserva.getFechaFin()))
                 .setPrecioDiario(reserva.getPrecioDiario().doubleValue())
                 .setImporteTotal(reserva.getImporteTotal().doubleValue())
                 .setEstado(switch (reserva.getEstado()) {
@@ -150,6 +158,10 @@ public class RentalGrpcService extends ServicioAlquileresGrpc.ServicioAlquileres
                     case CANCELADA -> com.rentar.proto.comun.EstadoReserva.CANCELADA;
                 })
                 .build();
+    }
+
+    private static String formatear(LocalDateTime fecha) {
+        return fecha.format(FORMATO_FECHA);
     }
 
     private static <T> void respond(StreamObserver<T> observer, Supplier<T> operation) {
