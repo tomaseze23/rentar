@@ -1,6 +1,7 @@
 package com.rentar.vehicleservice.grpc;
 
 import com.rentar.proto.vehiculo.ServicioVehiculosGrpc;
+import com.rentar.proto.vehiculo.SolicitudConsultarVehiculos;
 import com.rentar.proto.vehiculo.SolicitudIdVehiculo;
 import com.rentar.vehicleservice.entities.EstadoVehiculo;
 import com.rentar.vehicleservice.entities.TipoVehiculo;
@@ -12,13 +13,14 @@ import io.grpc.Status;
 import io.grpc.StatusRuntimeException;
 import io.grpc.inprocess.InProcessChannelBuilder;
 import io.grpc.inprocess.InProcessServerBuilder;
-import io.grpc.testing.GrpcCleanupRule;
-import org.junit.Rule;
+import io.grpc.Server;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import java.util.List;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -26,25 +28,46 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
-class VehiculoGrpcServiceImplIT {
+class VehiculoGrpcServiceImplTest {
 
-    @Rule
-    public final GrpcCleanupRule grpcCleanup = new GrpcCleanupRule();
+    // Server y channel in-process de cada test; se cierran en @AfterEach
+    // (GrpcCleanupRule es una @Rule de JUnit 4 y no se ejecuta en JUnit 5).
+    private Server server;
+    private ManagedChannel channel;
 
     @Mock
     private VehiculoRepository repository;
+
+    @AfterEach
+    void cerrar() {
+        if (channel != null) channel.shutdownNow();
+        if (server != null) server.shutdownNow();
+    }
+
+    private static Vehiculo vehiculo(long id, String patente, TipoVehiculo tipo) {
+        Vehiculo v = new Vehiculo();
+        v.setId(id);
+        v.setPatente(patente);
+        v.setMarca("Marca");
+        v.setModelo("Modelo");
+        v.setAnio("2022");
+        v.setTipoVehiculo(tipo);
+        v.setPrecioDiario(10000.0);
+        v.setEstado(EstadoVehiculo.DISPONIBLE);
+        v.setActivo(true);
+        return v;
+    }
 
     private ServicioVehiculosGrpc.ServicioVehiculosBlockingStub levantarServidorYObtenerStub(
             VehiculoDomainService domainService) throws Exception {
 
         String serverName = InProcessServerBuilder.generateName();
-        grpcCleanup.register(InProcessServerBuilder.forName(serverName)
+        server = InProcessServerBuilder.forName(serverName)
                 .directExecutor()
                 .addService(new VehiculoGrpcServiceImpl(domainService))
-                .build().start());
+                .build().start();
 
-        ManagedChannel channel = grpcCleanup.register(
-                InProcessChannelBuilder.forName(serverName).directExecutor().build());
+        channel = InProcessChannelBuilder.forName(serverName).directExecutor().build();
 
         return ServicioVehiculosGrpc.newBlockingStub(channel);
     }
@@ -82,5 +105,26 @@ class VehiculoGrpcServiceImplIT {
                 stub.consultarVehiculo(SolicitudIdVehiculo.newBuilder().setId(999L).build()));
 
         assertEquals(Status.Code.NOT_FOUND, ex.getStatus().getCode());
+    }
+
+    @Test
+    void consultarVehiculos_filtraPorTipoEIds() throws Exception {
+        when(repository.findAll()).thenReturn(List.of(
+                vehiculo(1L, "AAA111", TipoVehiculo.SEDAN),
+                vehiculo(2L, "BBB222", TipoVehiculo.SUV),
+                vehiculo(3L, "CCC333", TipoVehiculo.SUV)));
+
+        var stub = levantarServidorYObtenerStub(new VehiculoDomainService(repository));
+
+        var suvs = stub.consultarVehiculos(SolicitudConsultarVehiculos.newBuilder()
+                .setTipoVehiculo(com.rentar.proto.comun.TipoVehiculo.SUV).build());
+        assertEquals(List.of(2L, 3L), suvs.getVehiculosList().stream().map(v -> v.getId()).toList());
+
+        var porIds = stub.consultarVehiculos(SolicitudConsultarVehiculos.newBuilder()
+                .addIds(1L).addIds(3L).build());
+        assertEquals(List.of(1L, 3L), porIds.getVehiculosList().stream().map(v -> v.getId()).toList());
+
+        var sinFiltros = stub.consultarVehiculos(SolicitudConsultarVehiculos.getDefaultInstance());
+        assertEquals(3, sinFiltros.getVehiculosCount());
     }
 }

@@ -6,7 +6,7 @@ import com.rentar.vehicleservice.entities.Vehiculo;
 
 public class VehiculoGrpcMapper {
 
-    private static TipoVehiculo mapTipo(com.rentar.proto.comun.TipoVehiculo t) {
+    static TipoVehiculo mapTipo(com.rentar.proto.comun.TipoVehiculo t) {
         if (t == null
                 || t == com.rentar.proto.comun.TipoVehiculo.TIPO_VEHICULO_NO_ESPECIFICADO
                 || t == com.rentar.proto.comun.TipoVehiculo.UNRECOGNIZED) {
