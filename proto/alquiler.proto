@@ -36,6 +36,19 @@ message Reserva {
   double importe_total = 7;
 
   rentar.comun.v1.EstadoReserva estado = 8;
+
+  // Hito 3. Resultado del mantenimiento preventivo asociado a la reserva (asincrono).
+  // Arranca en MANTENIMIENTO_PENDIENTE y se actualiza con el 
+  // evento mantenimiento.resultado. La confirmación no espera este resultado.
+  ResultadoMantenimiento mantenimiento = 9;
+}
+
+// El API Gateway informa los valores sin el prefijo: PENDIENTE, REALIZADO,
+// NO_REALIZADO.
+enum ResultadoMantenimiento {
+  MANTENIMIENTO_PENDIENTE = 0;
+  MANTENIMIENTO_REALIZADO = 1;
+  MANTENIMIENTO_NO_REALIZADO = 2;
 }
 
 message SolicitudCrearReserva {

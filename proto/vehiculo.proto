@@ -56,6 +56,21 @@ service ServicioVehiculos {
   // Errores: NOT_FOUND (id inexistente), INVALID_ARGUMENT (estado inválido).
   rpc ActualizarEstadoVehiculo(SolicitudActualizarEstadoVehiculo)
       returns (Vehiculo);
+  
+  // Hito 3 (eventos con RabbitMQ)
+  // Un cliente propone incorporar un vehículo de su propiedad. La solicitud
+  // guarda en estado SOLICITUD_PENDIENTE y se responde enseguida. Las validaciones,
+  // patente y titularidad se hacen de forma asíncrona por eventos.
+  // El vehículo no existe todavía como vehículo de la flota, recién
+  // se crea, DISPONIBLE, cuando ambas validaciones dan VALIDADO.
+  // Errores: INVALID_ARGUMENT, ALREADY_EXISTS (la patente ya es un vehículo o 
+  // tiene una solicitud en curso), NOT_FOUND (el cliente no existe).
+  rpc SolicitarIncorporacionVehiculoExterno(SolicitudIncorporacionExterna)
+    returns (SolicitudIncorporacion);
+
+  // Lista las solicitudes de incorporación, opcionalmente de un solo cliente.
+  rpc ConsultarSolicitudesIncorporacion(SolicitudConsultarSolicitudes)
+    returns (RespuestaConsultarSolicitudes);
 }
 
 // Representación completa de un vehículo, tal como se devuelve al cliente.
@@ -76,6 +91,16 @@ message Vehiculo {
   rentar.comun.v1.EstadoVehiculo estado = 9;
 
   bool activo = 10;
+
+  // Hito 3. Resultado de la verificación de la patente (asíncrona).
+  // ROBADO no es un estado operativo, los estados siguen siendo:
+  // DISPONIBLE, RESERVADO, EN_ALQUILER. Un vehículo ROBADO queda inhabilitado,
+  // no aparece como disponible y no se puede reservar.
+  EstadoVerificacion verificacion = 11;
+
+  // Hito 3. Cliente dueño del vehículo si entró por incorporación externa. 
+  // Ausente para los vehículos de la flota Rentar.
+  optional int64 propietario_cliente_id = 12;
 }
 
 // Datos para dar de alta un vehículo. patente, marca, modelo, anio,
@@ -143,3 +168,74 @@ message SolicitudActualizarEstadoVehiculo {
   int64 vehiculo_id = 1;
   rentar.comun.v1.EstadoVehiculo estado = 2;
 }
+
+// ------------
+// HITO 3
+//-------------
+
+// Resultado de una verificación. Se reutiliza para:
+// - Vehiculo.verificacion: PENDIENTE, VALIDADO, ROBADO
+// - cada validacion de una solicitud externa: PENDIENTE, VALIDADO, RECHAZADO
+// El valor 0 significa "todavía sin resultado (el API GATEWAY lo informa como "PENDIENTE").
+enum EstadoVerificacion {
+  ESTADO_VERIFICACION_PENDIENTE = 0;
+  VALIDADO = 1;
+  ROBADO = 2;
+  RECHAZADO = 3;
+}
+
+// Estado de una solicitud de incorporación. El API Gateway informa
+// los valores sin el prefijo: PENDIENTE, RECHAZADA, INCORPORADA.
+enum EstadoSolicitudIncorporacion {
+  ESTADO_SOLICITUD_NO_ESPECIFICADO = 0;
+  SOLICITUD_PENDIENTE = 1;
+  SOLICITUD_RECHAZADA = 2;
+  SOLICITUD_INCORPORADA = 3;
+}
+
+// Datos del vehículo que el cliente quiere incorporar. Todos obligatorios salvo color.
+// Se guardan en la solicitud para poder crear el vehículo cuando
+// se aprueba (el evento vehiculos.externos.registrados solo lleva vehiculoExternoId, clienteId y patente).
+message SolicitudIncorporacionExterna {
+  int64 cliente_id = 1;
+  string patente = 2;
+  string marca = 3;
+  string modelo = 4;
+  string anio = 5;
+  optional string color = 6;
+  rentar.comun.v1.TipoVehiculo tipo_vehiculo = 7;
+  double precio_diario = 8;
+}
+
+// Solicitud de incorporación y su avance. id es el vehiculoExternoId
+// de los eventos.
+message SolicitudIncorporacion {
+  int64 id = 1;
+  int64 cliente_id = 2;
+  string patente = 3;
+  string marca = 4;
+  string modelo = 5;
+  string anio = 6;
+  optional string color = 7;
+  rentar.comun.v1.TipoVehiculo tipo_vehiculo = 8;
+  double precio_diario = 9;
+
+  EstadoSolicitudIncorporacion estado = 10;
+
+  // Resultado de cada validación (PENDIENTE hasta que llega el evento).
+  EstadoVerificacion validacion_patente = 11;
+  EstadoVerificacion validacion_titularidad = 12;
+
+  // Id del vehículo creado cuando la solicitud queda INCORPORADA. 
+  optional int64 vehiculo_id = 13;
+}
+
+message SolicitudConsultarSolicitudes {
+  // Sin cliente_id, trae las de todos los clientes.
+  optional int64 cliente_id = 1;
+}
+
+message RespuestaConsultarSolicitudes {
+  repeated SolicitudIncorporacion solicitudes = 1;
+}
+
