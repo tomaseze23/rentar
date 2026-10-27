@@ -1,0 +1,39 @@
+{
+    "vhosts": [
+        {"name": "/"}
+    ],
+    "users": [
+        {"name": "guest", "password": "guest", "tags": ["administrator"]}
+    ],
+    "permissions": [
+        {"user": "guest", "vhost": "/", "configure": ".*", "write": ".*", "read": ".*"}
+    ],
+    "exchanges": [
+        {"name": "rentar.eventos", "vhost": "/", "type": "topic", "durable": true, "auto_delete": false, "internal": false, "arguments": {}},
+        {"name": "rentar.eventos.dlx", "vhost": "/", "type": "fanout", "durable": true, "auto_delete": false, "internal": false, "arguments": {}}
+    ],
+    "queues": [
+        {"name": "registro-policial.vehiculos.verificacion.solicitada", "vhost": "/", "durable": true, "auto_delete": false, "arguments": {"x-dead-letter-exchange": "rentar.eventos.dlx"}},
+        {"name": "vehicle-service.vehiculos.verificacion.resultado", "vhost": "/", "durable": true, "auto_delete": false, "arguments": {"x-dead-letter-exchange": "rentar.eventos.dlx"}},
+        {"name": "registro-policial.vehiculos.externos.registrados", "vhost": "/", "durable": true, "auto_delete": false, "arguments": {"x-dead-letter-exchange": "rentar.eventos.dlx"}},
+        {"name": "titularidad.vehiculos.externos.registrados", "vhost": "/", "durable": true, "auto_delete": false, "arguments": {"x-dead-letter-exchange": "rentar.eventos.dlx"}},
+        {"name": "vehicle-service.vehiculos.externos.validacion.patente", "vhost": "/", "durable": true, "auto_delete": false, "arguments": {"x-dead-letter-exchange": "rentar.eventos.dlx"}},
+        {"name": "vehicle-service.vehiculos.externos.validacion.titularidad", "vhost": "/", "durable": true, "auto_delete": false, "arguments": {"x-dead-letter-exchange": "rentar.eventos.dlx"}},
+        {"name": "vehicle-service.vehiculos.externos.validacion.completada", "vhost": "/", "durable": true, "auto_delete": false, "arguments": {"x-dead-letter-exchange": "rentar.eventos.dlx"}},
+        {"name": "mantenimiento.reserva.confirmada", "vhost": "/", "durable": true, "auto_delete": false, "arguments": {"x-dead-letter-exchange": "rentar.eventos.dlx"}},
+        {"name": "rental-service.mantenimiento.resultado", "vhost": "/", "durable": true, "auto_delete": false, "arguments": {"x-dead-letter-exchange": "rentar.eventos.dlx"}},
+        {"name": "rentar.dlq", "vhost": "/", "durable": true, "auto_delete": false, "arguments": {}}
+    ],
+    "bindings": [
+        {"source": "rentar.eventos", "vhost": "/", "destination": "registro-policial.vehiculos.verificacion.solicitada", "destination_type": "queue", "routing_key": "vehiculos.verificacion.solicitada", "arguments": {}},
+        {"source": "rentar.eventos", "vhost": "/", "destination": "vehicle-service.vehiculos.verificacion.resultado", "destination_type": "queue", "routing_key": "vehiculos.verificacion.resultado", "arguments": {}},
+        {"source": "rentar.eventos", "vhost": "/", "destination": "registro-policial.vehiculos.externos.registrados", "destination_type": "queue", "routing_key": "vehiculos.externos.registrados", "arguments": {}},
+        {"source": "rentar.eventos", "vhost": "/", "destination": "titularidad.vehiculos.externos.registrados", "destination_type": "queue", "routing_key": "vehiculos.externos.registrados", "arguments": {}},
+        {"source": "rentar.eventos", "vhost": "/", "destination": "vehicle-service.vehiculos.externos.validacion.patente", "destination_type": "queue", "routing_key": "vehiculos.externos.validacion.patente", "arguments": {}},
+        {"source": "rentar.eventos", "vhost": "/", "destination": "vehicle-service.vehiculos.externos.validacion.titularidad", "destination_type": "queue", "routing_key": "vehiculos.externos.validacion.titularidad", "arguments": {}},
+        {"source": "rentar.eventos", "vhost": "/", "destination": "vehicle-service.vehiculos.externos.validacion.completada", "destination_type": "queue", "routing_key": "vehiculos.externos.validacion.completada", "arguments": {}},
+        {"source": "rentar.eventos", "vhost": "/", "destination": "mantenimiento.reserva.confirmada", "destination_type": "queue", "routing_key": "reserva.confirmada", "arguments": {}},
+        {"source": "rentar.eventos", "vhost": "/", "destination": "rental-service.mantenimiento.resultado", "destination_type": "queue", "routing_key": "mantenimiento.resultado", "arguments": {}},
+        {"source": "rentar.eventos.dlx", "vhost": "/", "destination": "rentar.dlq", "destination_type": "queue", "routing_key": "", "arguments": {}}        
+    ]
+}
