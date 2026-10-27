@@ -15,6 +15,11 @@ directamente a estas bases.
 - `01_clientes.sql`: crea `usuario` y `cliente`.
 - `02_vehiculos.sql`: crea `vehiculo`.
 - `03_alquileres.sql`: crea `reservas`.
+- `04_datos_prueba_clientes.sql`, `05_datos_prueba_vehiculos.sql`, `06_datos_prueba_alquileres.sql`:
+  datos de prueba (8 clientes, 14 vehículos con patentes fijas y 17 reservas, incluidos alquileres
+  terminados para el historial). Contraseña de los clientes de prueba: `cliente1234`.
+  Son repetibles y las reservas usan fechas relativas al día de la carga. En Docker los carga
+  `docker-init.sh` la primera vez que se crea el volumen; para no cargarlos, comentá sus tres líneas.
 
 ## Orden de ejecución
 
