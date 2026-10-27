@@ -3,8 +3,10 @@
 // =============================================================================
 //
 // Contrato gRPC del servicio responsable del dominio vehículos: la flota de
-// Rentar. Es el único dueño de la base rentar_vehiculos (tabla vehiculo): ni el
-// API Gateway ni los demás servicios acceden a ella directamente.
+// Rentar y las solicitudes de incorporación de vehículos externos. Es el único
+// dueño de la base rentar_vehiculos (tablas vehiculo y solicitud de
+// incorporación): ni el API Gateway ni los demás servicios acceden a ella
+// directamente.
 //
 // Convenciones:
 //   - Cada RPC tiene su propio mensaje de solicitud y su propio mensaje de
@@ -13,6 +15,9 @@
 //   - Los identificadores son int64 positivos.
 //   - La baja de un vehículo es lógica (campo activo); nunca se borra de la base.
 //   - Los campos optional ausentes significan "sin dato" o "sin filtro".
+//   - Las verificaciones y validaciones de patente y titularidad son
+//     asíncronas: se resuelven por eventos de RabbitMQ (ver eventos/README.md)
+//     y estos RPC nunca esperan su resultado.
 //
 // Errores: se informan con los códigos de estado estándar de gRPC.
 //   INVALID_ARGUMENT     datos obligatorios faltantes o con formato inválido
@@ -100,6 +105,28 @@ service ServicioVehiculos {
   // sin especificar).
   rpc ActualizarEstadoVehiculo(SolicitudActualizarEstadoVehiculo)
       returns (RespuestaActualizarEstadoVehiculo);
+
+  // Un cliente propone incorporar un vehículo de su propiedad. La solicitud se
+  // guarda en estado ESTADO_SOLICITUD_INCORPORACION_PENDIENTE y se responde
+  // enseguida: las validaciones de patente y de titularidad se hacen de forma
+  // asíncrona por eventos. El vehículo NO existe todavía en la flota: recién
+  // se crea, DISPONIBLE y a nombre del cliente, cuando ambas validaciones dan
+  // RESULTADO_VALIDACION_VALIDADO.
+  // Datos requeridos: cliente_id, patente, marca, modelo, anio (4 dígitos),
+  // tipo_vehiculo y precio_diario (mayor a 0). Opcional: color.
+  // Responde la solicitud creada, con sus validaciones todavía pendientes.
+  // Errores: INVALID_ARGUMENT (campos obligatorios faltantes o inválidos),
+  // ALREADY_EXISTS (la patente ya es un vehículo o tiene una solicitud en
+  // curso), NOT_FOUND (el cliente no existe).
+  rpc IncorporarVehiculoExterno(SolicitudIncorporarVehiculoExterno)
+      returns (RespuestaIncorporarVehiculoExterno);
+
+  // Lista las solicitudes de incorporación de vehículos externos,
+  // opcionalmente de un solo cliente, para seguir el avance de cada una.
+  // Sin resultados responde una lista vacía.
+  // Errores: INVALID_ARGUMENT (cliente_id menor o igual a cero).
+  rpc ConsultarSolicitudesIncorporacion(SolicitudConsultarSolicitudesIncorporacion)
+      returns (RespuestaConsultarSolicitudesIncorporacion);
 }
 
 // Representación completa de un vehículo, tal como se devuelve al cliente.
@@ -126,6 +153,29 @@ message Vehiculo {
 
   // false si el vehículo fue dado de baja (baja lógica).
   bool activo = 10;
+
+  // Resultado de la verificación de la patente contra el registro policial
+  // (asíncrona). Un vehículo nuevo arranca en ESTADO_VERIFICACION_PENDIENTE.
+  // ROBADO no es un estado operativo: "estado" sigue siendo disponible,
+  // reservado o en alquiler. Un vehículo ROBADO queda inhabilitado: no aparece
+  // como disponible y no se puede reservar.
+  EstadoVerificacion verificacion = 11;
+
+  // Cliente dueño del vehículo si entró por incorporación externa. Ausente
+  // para los vehículos de la flota de Rentar.
+  optional int64 propietario_cliente_id = 12;
+}
+
+// Resultado de la verificación de un vehículo contra el registro policial.
+enum EstadoVerificacion {
+  // No informado. No es un valor válido para guardar.
+  ESTADO_VERIFICACION_NO_ESPECIFICADO = 0;
+  // Todavía no llegó el resultado del registro policial.
+  ESTADO_VERIFICACION_PENDIENTE = 1;
+  // La patente no figura como robada.
+  ESTADO_VERIFICACION_VALIDADO = 2;
+  // La patente figura como robada: el vehículo queda inhabilitado.
+  ESTADO_VERIFICACION_ROBADO = 3;
 }
 
 // Datos para dar de alta un vehículo. patente, marca, modelo, anio,
@@ -252,4 +302,100 @@ message SolicitudActualizarEstadoVehiculo {
 // Vehículo con el estado ya cambiado.
 message RespuestaActualizarEstadoVehiculo {
   Vehiculo vehiculo = 1;
+}
+
+// ---------------------------------------------------------------------------
+// Incorporación de vehículos externos
+// ---------------------------------------------------------------------------
+
+// Estado de una solicitud de incorporación de un vehículo externo.
+enum EstadoSolicitudIncorporacion {
+  // No informado. No es un valor válido para guardar.
+  ESTADO_SOLICITUD_INCORPORACION_NO_ESPECIFICADO = 0;
+  // Esperando el resultado de las validaciones de patente y titularidad.
+  ESTADO_SOLICITUD_INCORPORACION_PENDIENTE = 1;
+  // Alguna de las validaciones fue rechazada: el vehículo no se incorpora.
+  ESTADO_SOLICITUD_INCORPORACION_RECHAZADA = 2;
+  // Ambas validaciones dieron VALIDADO y el vehículo ya fue creado.
+  ESTADO_SOLICITUD_INCORPORACION_INCORPORADA = 3;
+}
+
+// Resultado de una de las validaciones de una solicitud de incorporación
+// (patente o titularidad).
+enum ResultadoValidacion {
+  // No informado. No es un valor válido para guardar.
+  RESULTADO_VALIDACION_NO_ESPECIFICADO = 0;
+  // Todavía no llegó el resultado.
+  RESULTADO_VALIDACION_PENDIENTE = 1;
+  // La validación fue aprobada.
+  RESULTADO_VALIDACION_VALIDADO = 2;
+  // La validación fue rechazada.
+  RESULTADO_VALIDACION_RECHAZADO = 3;
+}
+
+// Solicitud de incorporación de un vehículo externo y su avance. Es lo que
+// consulta el cliente para saber en qué quedó su pedido.
+message IncorporacionExterna {
+  // Identificador de la solicitud. Es el vehiculoExternoId de los eventos.
+  int64 id = 1;
+
+  // Cliente que propone el vehículo.
+  int64 cliente_id = 2;
+
+  // Datos del vehículo propuesto. Se guardan en la solicitud porque el evento
+  // vehiculos.externos.registrados solo lleva vehiculoExternoId, clienteId y
+  // patente, y para crear el vehículo hacen falta todos.
+  string patente = 3;
+  string marca = 4;
+  string modelo = 5;
+  string anio = 6;
+  optional string color = 7;
+  rentar.comun.v1.TipoVehiculo tipo_vehiculo = 8;
+  double precio_diario = 9;
+
+  // Estado general de la solicitud.
+  EstadoSolicitudIncorporacion estado = 10;
+
+  // Resultado de la validación de la patente (registro policial).
+  ResultadoValidacion validacion_patente = 11;
+
+  // Resultado de la validación de titularidad.
+  ResultadoValidacion validacion_titularidad = 12;
+
+  // Id del vehículo creado. Solo presente cuando la solicitud quedó
+  // INCORPORADA.
+  optional int64 vehiculo_id = 13;
+}
+
+// Datos del vehículo que el cliente quiere incorporar. Todos son obligatorios
+// salvo color.
+message SolicitudIncorporarVehiculoExterno {
+  // Cliente dueño del vehículo. Mayor que cero.
+  int64 cliente_id = 1;
+  // Patente. No puede estar ya registrada ni tener otra solicitud en curso.
+  string patente = 2;
+  string marca = 3;
+  string modelo = 4;
+  // Año de fabricación, texto numérico de 4 dígitos.
+  string anio = 5;
+  optional string color = 6;
+  rentar.comun.v1.TipoVehiculo tipo_vehiculo = 7;
+  // Precio de alquiler por día. Mayor a 0.
+  double precio_diario = 8;
+}
+
+// Solicitud creada, en estado pendiente y con las validaciones sin resultado.
+message RespuestaIncorporarVehiculoExterno {
+  IncorporacionExterna solicitud = 1;
+}
+
+// Filtro opcional para listar solicitudes de incorporación.
+message SolicitudConsultarSolicitudesIncorporacion {
+  // Solo las solicitudes de este cliente. Ausente: las de todos los clientes.
+  optional int64 cliente_id = 1;
+}
+
+// Solicitudes que cumplen el filtro. Lista vacía si no hay ninguna.
+message RespuestaConsultarSolicitudesIncorporacion {
+  repeated IncorporacionExterna solicitudes = 1;
 }

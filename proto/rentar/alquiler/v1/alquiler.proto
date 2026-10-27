@@ -110,6 +110,24 @@ message Reserva {
   double importe_total = 7;
 
   rentar.comun.v1.EstadoReserva estado = 8;
+
+  // Resultado del mantenimiento preventivo asociado a la reserva, que se
+  // procesa de forma asíncrona. Arranca en RESULTADO_MANTENIMIENTO_PENDIENTE y
+  // se actualiza cuando llega el evento mantenimiento.resultado. La
+  // confirmación de la reserva NO espera este resultado.
+  ResultadoMantenimiento mantenimiento = 9;
+}
+
+// Resultado del mantenimiento preventivo de una reserva.
+enum ResultadoMantenimiento {
+  // No informado. No es un valor válido para guardar.
+  RESULTADO_MANTENIMIENTO_NO_ESPECIFICADO = 0;
+  // Todavía no llegó el resultado del mantenimiento.
+  RESULTADO_MANTENIMIENTO_PENDIENTE = 1;
+  // El mantenimiento se realizó.
+  RESULTADO_MANTENIMIENTO_REALIZADO = 2;
+  // El mantenimiento no se pudo realizar.
+  RESULTADO_MANTENIMIENTO_NO_REALIZADO = 3;
 }
 
 // Datos para crear una reserva. Todos son obligatorios.
