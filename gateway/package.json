@@ -4,7 +4,7 @@
   "description": "",
   "private": true,
   "scripts": {
-    "gen:types": "proto-loader-gen-types --longs=String --enums=String --defaults --oneofs --grpcLib=@grpc/grpc-js --includeDirs=../proto --outDir=src/generated ../proto/comun.proto ../proto/vehiculo.proto ../proto/cliente.proto ../proto/alquiler.proto",
+    "gen:types": "proto-loader-gen-types --longs=String --enums=String --defaults --oneofs --grpcLib=@grpc/grpc-js --includeDirs=../proto --outDir=src/generated rentar/comun/v1/comun.proto rentar/vehiculo/v1/vehiculo.proto rentar/cliente/v1/cliente.proto rentar/alquiler/v1/alquiler.proto",
     "postinstall": "npm run gen:types",
     "dev": "tsx watch src/index.ts",
     "build": "tsc",

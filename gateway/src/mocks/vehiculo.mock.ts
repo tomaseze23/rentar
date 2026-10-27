@@ -12,9 +12,9 @@ interface Vehiculo {
 }
 
 const datos: Vehiculo[] = [
-    { id: 1, patente: 'AAA123', marca: 'Chevrolet', modelo: 'Cruze', anio: '2022', color: 'Azul', tipoVehiculo: 'SEDAN', precioDiario: 12000, estado: 'DISPONIBLE', activo: true },
-    { id: 2, patente: 'AA123BB', marca: 'Ford', modelo: 'Focus', anio: '2020', color: 'Gris', tipoVehiculo: 'SEDAN', precioDiario: 20000, estado: 'DISPONIBLE', activo: true },
-    { id: 3, patente: 'AC456DD', marca: 'Toyota', modelo: 'Hilux', anio: '2023', color: 'Blanco', tipoVehiculo: 'PICKUP', precioDiario: 35000, estado: 'DISPONIBLE', activo: true },
+    { id: 1, patente: 'AAA123', marca: 'Chevrolet', modelo: 'Cruze', anio: '2022', color: 'Azul', tipoVehiculo: 'TIPO_VEHICULO_SEDAN', precioDiario: 12000, estado: 'ESTADO_VEHICULO_DISPONIBLE', activo: true },
+    { id: 2, patente: 'AA123BB', marca: 'Ford', modelo: 'Focus', anio: '2020', color: 'Gris', tipoVehiculo: 'TIPO_VEHICULO_SEDAN', precioDiario: 20000, estado: 'ESTADO_VEHICULO_DISPONIBLE', activo: true },
+    { id: 3, patente: 'AC456DD', marca: 'Toyota', modelo: 'Hilux', anio: '2023', color: 'Blanco', tipoVehiculo: 'TIPO_VEHICULO_PICKUP', precioDiario: 35000, estado: 'ESTADO_VEHICULO_DISPONIBLE', activo: true },
 ];
 let nextId = 4;
 
@@ -32,15 +32,15 @@ const handlers: ServicioVehiculosHandlers = {
         }
         const v: Vehiculo = {
           id: nextId++, patente, marca: r.marca, modelo: r.modelo, anio: r.anio, color: r.color,
-          tipoVehiculo: r.tipoVehiculo, precioDiario: r.precioDiario, estado: 'DISPONIBLE', activo: true,
+          tipoVehiculo: r.tipoVehiculo, precioDiario: r.precioDiario, estado: 'ESTADO_VEHICULO_DISPONIBLE', activo: true,
         };
     datos.push(v);
-    cb(null, v);
+    cb(null, { vehiculo: v });
     },
 
     ConsultarVehiculo: (call, cb) => {
         const v = buscar(call.request.id);
-        v ? cb(null, v) : cb(noEncontrado(call.request.id));
+        v ? cb(null, { vehiculo: v }) : cb(noEncontrado(call.request.id));
     },
 
     ConsultarVehiculos: (call, cb) => {
@@ -61,14 +61,14 @@ const handlers: ServicioVehiculosHandlers = {
           marca: r.marca, modelo: r.modelo, anio: r.anio, color: r.color,
           tipoVehiculo: r.tipoVehiculo, precioDiario: r.precioDiario,
         });
-        cb(null, v);
+        cb(null, { vehiculo: v });
     },
 
     DarDeBajaVehiculo: (call, cb) => {
         const v = buscar(call.request.id);
         if (!v) return cb(noEncontrado(call.request.id));
         v.activo = false;
-        cb(null, v);
+        cb(null, { vehiculo: v });
     },
 
     ReactivarVehiculo: (call, cb) => {
@@ -76,7 +76,7 @@ const handlers: ServicioVehiculosHandlers = {
         if (!v) return cb(noEncontrado(call.request.id));
         if (v.activo) return cb(grpcError(status.FAILED_PRECONDITION, `El vehículo ${v.id} ya se encuentra activo`));
         v.activo = true;
-        cb(null, v);
+        cb(null, { vehiculo: v });
     },
 
     ConsultarDisponibilidad: (call, cb) => {

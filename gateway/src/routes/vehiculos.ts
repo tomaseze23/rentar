@@ -3,7 +3,7 @@ import { vehiculos } from '../grpc/clients';
 import { HttpError } from '../errors';
 import { asyncHandler, idNumerico } from '../http';
 import { vehiculoDto } from '../mappers';
-import type { TipoVehiculo } from '../generated/rentar/comun/v1/TipoVehiculo';
+import type { TipoVehiculo } from '../dominio';
 import { validarVehiculo } from '../validators';
 
 export const vehiculosRouter = Router();

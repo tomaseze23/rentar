@@ -1,0 +1,223 @@
+// =============================================================================
+// Rentar - Servicio de Alquileres (Rental Service)
+// =============================================================================
+//
+// Contrato gRPC del servicio responsable del dominio reservas y alquileres. Es
+// el único dueño de la base rentar_alquileres (tabla reservas): ni el API
+// Gateway ni los demás servicios acceden a ella directamente.
+//
+// Este servicio no valida si el cliente o el vehículo existen ni están
+// activos: eso lo verifica antes el API Gateway con el Customer Service y el
+// Vehicle Service, y le pasa a este servicio los datos ya validados (por
+// ejemplo el precio diario del vehículo).
+//
+// Convenciones:
+//   - Cada RPC tiene su propio mensaje de solicitud y su propio mensaje de
+//     respuesta (SolicitudXxx / RespuestaXxx). Las respuestas que devuelven una
+//     reserva la traen en el campo "reserva".
+//   - Las fechas con hora viajan como texto "yyyy-MM-ddTHH:mm:ss" (ISO-8601
+//     sin zona horaria, hora local). Los períodos tienen extremos abiertos: si
+//     una reserva termina cuando otra empieza, no se superponen.
+//   - Los importes y precios se expresan en la moneda del sistema, con dos
+//     decimales.
+//   - Los identificadores son int64 positivos.
+//
+// Errores: se informan con los códigos de estado estándar de gRPC.
+//   INVALID_ARGUMENT     datos faltantes, con formato inválido o incoherentes
+//   NOT_FOUND            la reserva pedida no existe
+//   PERMISSION_DENIED    la reserva pertenece a otro cliente
+//   FAILED_PRECONDITION  la operación no aplica al estado de la reserva o hay
+//                        superposición con otra reserva confirmada
+// =============================================================================
+
+syntax = "proto3";
+
+package rentar.alquiler.v1;
+
+option java_multiple_files = true;
+option java_package = "com.rentar.proto.alquiler";
+
+import "rentar/comun/v1/comun.proto";
+
+// Reservas, cancelaciones, historial y ocupación de vehículos.
+service ServicioAlquileres {
+
+  // Crea una reserva CONFIRMADA para un cliente y un vehículo en un período.
+  // Regla de negocio: no puede haber otra reserva confirmada del mismo
+  // vehículo que se superponga con el período pedido.
+  // Importe: días facturados = duración del período en horas / 24, redondeado
+  // hacia arriba (ceil); importe_total = días facturados x precio_diario.
+  // Datos requeridos: cliente_id, vehiculo_id, periodo (fecha_fin posterior a
+  // fecha_inicio) y precio_diario (finito y no negativo).
+  // Responde la reserva creada con su id, estado e importe calculado.
+  // Errores: INVALID_ARGUMENT (ids menores o iguales a cero, fechas con
+  // formato inválido o fecha_fin no posterior a fecha_inicio, precio
+  // inválido), FAILED_PRECONDITION (el vehículo ya tiene una reserva
+  // confirmada que se superpone).
+  rpc CrearReserva(SolicitudCrearReserva) returns (RespuestaCrearReserva);
+
+  // Lista reservas con filtros opcionales que se combinan: por cliente, por
+  // vehículos, por estado y por rango de fechas. Sin filtros trae todas.
+  // Sin resultados responde una lista vacía.
+  // Errores: INVALID_ARGUMENT (ids menores o iguales a cero, fecha_hasta no
+  // posterior a fecha_desde).
+  rpc ConsultarReservas(SolicitudConsultarReservas)
+      returns (RespuestaConsultarReservas);
+
+  // Cancela una reserva (baja lógica: pasa a CANCELADA y libera el vehículo).
+  // Reglas de negocio: solo el cliente dueño puede cancelarla, y solo si no
+  // está ya cancelada y su período todavía no comenzó.
+  // Responde la reserva ya cancelada.
+  // Errores: NOT_FOUND (la reserva no existe), PERMISSION_DENIED (pertenece a
+  // otro cliente), FAILED_PRECONDITION (ya estaba cancelada o su período ya
+  // comenzó).
+  rpc CancelarReserva(SolicitudCancelarReserva)
+      returns (RespuestaCancelarReserva);
+
+  // Historial de alquileres de un cliente: solo las reservas terminadas
+  // (FINALIZADA, cuyo período ya pasó) o CANCELADA. Las reservas vigentes no
+  // aparecen. Incluye la cantidad de días facturados y el importe.
+  // Errores: INVALID_ARGUMENT (cliente_id menor o igual a cero).
+  rpc ConsultarHistorial(SolicitudConsultarHistorial)
+      returns (RespuestaConsultarHistorial);
+
+  // Devuelve los ids de los vehículos que tienen una reserva confirmada que se
+  // superpone con el período pedido. El API Gateway lo usa para calcular la
+  // disponibilidad y se lo pasa al Vehicle Service para excluirlos.
+  // Errores: INVALID_ARGUMENT (período con formato inválido o incoherente).
+  rpc ConsultarVehiculosOcupados(SolicitudConsultarVehiculosOcupados)
+      returns (RespuestaConsultarVehiculosOcupados);
+}
+
+// Reserva de un vehículo por un cliente.
+message Reserva {
+  // Identificador de la reserva, asignado por el servicio al crearla.
+  int64 id = 1;
+
+  // Cliente que reservó.
+  int64 cliente_id = 2;
+  // Vehículo reservado.
+  int64 vehiculo_id = 3;
+
+  // Inicio del período reservado. "yyyy-MM-ddTHH:mm:ss".
+  string fecha_inicio = 4;
+  // Fin del período reservado. "yyyy-MM-ddTHH:mm:ss".
+  string fecha_fin = 5;
+
+  // Precio por día vigente al momento de reservar.
+  double precio_diario = 6;
+  // Importe total = días facturados (ceil(duración / 24 h)) x precio_diario.
+  double importe_total = 7;
+
+  rentar.comun.v1.EstadoReserva estado = 8;
+}
+
+// Datos para crear una reserva. Todos son obligatorios.
+message SolicitudCrearReserva {
+
+  // Cliente que reserva.
+  int64 cliente_id = 1;
+  // Vehículo a reservar.
+  int64 vehiculo_id = 2;
+
+  // Período de la reserva. fecha_fin posterior a fecha_inicio.
+  rentar.comun.v1.Periodo periodo = 3;
+
+  // Precio por día del vehículo, informado por el Gateway tras consultar al
+  // Vehicle Service. Finito y no negativo.
+  double precio_diario = 4;
+}
+
+// Reserva creada, con el importe ya calculado.
+message RespuestaCrearReserva {
+  Reserva reserva = 1;
+}
+
+// Filtros opcionales para listar reservas. Sin filtros, trae todas.
+message SolicitudConsultarReservas {
+  // Solo las reservas de este cliente.
+  optional int64 cliente_id = 1;
+
+  // Si no está vacía, solo las reservas de esos vehículos. Cada id debe ser
+  // mayor que cero.
+  repeated int64 vehiculo_ids = 2;
+
+  // Solo las reservas en este estado. Ausente o ESTADO_RESERVA_NO_ESPECIFICADO:
+  // cualquier estado.
+  optional rentar.comun.v1.EstadoReserva estado = 3;
+
+  // Rango de fechas del filtro, "yyyy-MM-ddTHH:mm:ss". fecha_hasta debe ser
+  // posterior a fecha_desde.
+  optional string fecha_desde = 4;
+  optional string fecha_hasta = 5;
+}
+
+// Reservas que cumplen los filtros. Lista vacía si no hay ninguna.
+message RespuestaConsultarReservas {
+  repeated Reserva reservas = 1;
+}
+
+// Reserva a cancelar.
+message SolicitudCancelarReserva {
+  // Reserva que se quiere cancelar.
+  int64 reserva_id = 1;
+
+  // Cliente que pide la cancelación; tiene que ser el dueño de la reserva.
+  int64 cliente_id = 2;
+}
+
+// Reserva ya cancelada (estado CANCELADA).
+message RespuestaCancelarReserva {
+  Reserva reserva = 1;
+}
+
+// Cliente cuyo historial se consulta.
+message SolicitudConsultarHistorial {
+
+  // Cliente. Mayor que cero.
+  int64 cliente_id = 1;
+}
+
+// Estado de un alquiler dentro del historial.
+enum EstadoHistorial {
+  // No informado. No aparece en un historial válido.
+  ESTADO_HISTORIAL_NO_ESPECIFICADO = 0;
+  // El período de la reserva ya pasó.
+  ESTADO_HISTORIAL_FINALIZADA = 1;
+  // La reserva fue cancelada.
+  ESTADO_HISTORIAL_CANCELADA = 2;
+}
+
+// Un alquiler del historial de un cliente.
+message HistorialAlquiler {
+  int64 reserva_id = 1;
+  int64 vehiculo_id = 2;
+
+  // "yyyy-MM-ddTHH:mm:ss"
+  string fecha_inicio = 3;
+  string fecha_fin = 4;
+
+  // Días facturados: ceil(duración / 24 h).
+  int64 cantidad_dias = 5;
+
+  double importe_total = 6;
+  EstadoHistorial estado = 7;
+}
+
+// Historial del cliente. Lista vacía si no tiene alquileres terminados ni
+// cancelados.
+message RespuestaConsultarHistorial {
+  repeated HistorialAlquiler alquileres = 1;
+}
+
+// Período a consultar.
+message SolicitudConsultarVehiculosOcupados {
+  // Período con formato "yyyy-MM-ddTHH:mm:ss" y fecha_fin posterior a
+  // fecha_inicio.
+  rentar.comun.v1.Periodo periodo = 1;
+}
+
+// Vehículos con una reserva confirmada que se superpone con el período.
+message RespuestaConsultarVehiculosOcupados {
+  repeated int64 vehiculo_ids = 1;
+}

@@ -1,6 +1,6 @@
 # Contexto de build = raíz del repo: sólo se necesitan el proto y el servicio
 *
-!proto/vehiculo.proto
-!proto/comun.proto
+!proto/rentar/vehiculo/v1/vehiculo.proto
+!proto/rentar/comun/v1/comun.proto
 !vehicle-service/pom.xml
 !vehicle-service/src/main/**

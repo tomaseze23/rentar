@@ -12,7 +12,7 @@ interface Reserva {
 // Fechas en formato yyyy-MM-dd'T'HH:mm:ss (sin zona horaria).
 const reservas: Reserva[] = [
   // Reserva pasada: en el historial aparece como FINALIZADA (se deriva por fecha, no se guarda).
-  { id: 1, clienteId: 1, vehiculoId: 1, fechaInicio: '2026-09-01T10:00:00', fechaFin: '2026-09-03T10:00:00', precioDiario: 12000, importeTotal: 24000, estado: 'CONFIRMADA' },
+  { id: 1, clienteId: 1, vehiculoId: 1, fechaInicio: '2026-09-01T10:00:00', fechaFin: '2026-09-03T10:00:00', precioDiario: 12000, importeTotal: 24000, estado: 'ESTADO_RESERVA_CONFIRMADA' },
 ];
 let nextId = 2;
 
@@ -31,25 +31,25 @@ const handlers: ServicioAlquileresHandlers = {
     if (t(fin) <= t(ini)) return cb(grpcError(status.INVALID_ARGUMENT, 'La fecha de fin debe ser posterior a la de inicio'));
     if (t(ini) < Date.now()) return cb(grpcError(status.INVALID_ARGUMENT, 'La reserva debe comenzar en el futuro'));
     const ocupado = reservas.some(
-      (x) => x.vehiculoId === Number(r.vehiculoId) && x.estado === 'CONFIRMADA' && solapa(x.fechaInicio, x.fechaFin, ini, fin),
+      (x) => x.vehiculoId === Number(r.vehiculoId) && x.estado === 'ESTADO_RESERVA_CONFIRMADA' && solapa(x.fechaInicio, x.fechaFin, ini, fin),
     );
     if (ocupado) return cb(grpcError(status.FAILED_PRECONDITION, 'El vehículo ya cuenta con una reserva confirmada en el período indicado'));
     const nueva: Reserva = {
       id: nextId++, clienteId: Number(r.clienteId), vehiculoId: Number(r.vehiculoId), fechaInicio: ini, fechaFin: fin,
-      precioDiario: r.precioDiario, importeTotal: dias(ini, fin) * r.precioDiario, estado: 'CONFIRMADA',
+      precioDiario: r.precioDiario, importeTotal: dias(ini, fin) * r.precioDiario, estado: 'ESTADO_RESERVA_CONFIRMADA',
     };
     reservas.push(nueva);
-    cb(null, nueva);
+    cb(null, { reserva: nueva });
   },
 
   CancelarReserva: (call, cb) => {
     const x = reservas.find((r) => String(r.id) === String(call.request.reservaId));
     if (!x) return cb(grpcError(status.NOT_FOUND, `Reserva no encontrada con ID: ${call.request.reservaId}`));
     if (String(x.clienteId) !== String(call.request.clienteId)) return cb(grpcError(status.PERMISSION_DENIED, 'No podés cancelar reservas de otro cliente'));
-    if (x.estado === 'CANCELADA') return cb(grpcError(status.FAILED_PRECONDITION, 'La reserva ya se encuentra cancelada'));
+    if (x.estado === 'ESTADO_RESERVA_CANCELADA') return cb(grpcError(status.FAILED_PRECONDITION, 'La reserva ya se encuentra cancelada'));
     if (t(x.fechaInicio) <= Date.now()) return cb(grpcError(status.FAILED_PRECONDITION, 'No se puede cancelar una reserva cuyo período ya comenzó'));
-    x.estado = 'CANCELADA';
-    cb(null, x);
+    x.estado = 'ESTADO_RESERVA_CANCELADA';
+    cb(null, { reserva: x });
   },
 
   ConsultarReservas: (call, cb) => {
@@ -68,11 +68,11 @@ const handlers: ServicioAlquileresHandlers = {
     const ahora = Date.now();
     const alquileres = reservas
       .filter((x) => String(x.clienteId) === String(call.request.clienteId))
-      .filter((x) => x.estado === 'CANCELADA' || t(x.fechaFin) < ahora)
+      .filter((x) => x.estado === 'ESTADO_RESERVA_CANCELADA' || t(x.fechaFin) < ahora)
       .map((x) => ({
         reservaId: x.id, vehiculoId: x.vehiculoId, fechaInicio: x.fechaInicio, fechaFin: x.fechaFin,
         cantidadDias: dias(x.fechaInicio, x.fechaFin), importeTotal: x.importeTotal,
-        estado: x.estado === 'CANCELADA' ? ('CANCELADA' as const) : ('FINALIZADA' as const),
+        estado: x.estado === 'ESTADO_RESERVA_CANCELADA' ? ('ESTADO_HISTORIAL_CANCELADA' as const) : ('ESTADO_HISTORIAL_FINALIZADA' as const),
       }));
     cb(null, { alquileres });
   },
@@ -81,7 +81,7 @@ const handlers: ServicioAlquileresHandlers = {
     const ini = call.request.periodo?.fechaInicio, fin = call.request.periodo?.fechaFin;
     if (!ini || !fin || t(fin) <= t(ini)) return cb(grpcError(status.INVALID_ARGUMENT, 'Período inválido'));
     const ids = reservas
-      .filter((x) => x.estado === 'CONFIRMADA' && solapa(x.fechaInicio, x.fechaFin, ini, fin))
+      .filter((x) => x.estado === 'ESTADO_RESERVA_CONFIRMADA' && solapa(x.fechaInicio, x.fechaFin, ini, fin))
       .map((x) => x.vehiculoId);
     cb(null, { vehiculoIds: [...new Set(ids)] });
   },

@@ -4,8 +4,7 @@ import { HttpError, toHttpError } from '../errors';
 import { alquileres, clientes, vehiculos } from '../grpc/clients'; // antes solo traía clientes
 import { clienteDto } from '../mappers';
 import { leerFechaHora, validarCliente } from '../validators'; //suma leer fecha
-import type { TipoVehiculo } from '../generated/rentar/comun/v1/TipoVehiculo';
-import type { EstadoReserva } from '../generated/rentar/comun/v1/EstadoReserva';
+import type { TipoVehiculo, EstadoReserva } from '../dominio';
 
 // Quién hace la consulta (o null si no hay token).
 // Es un `type` y no una `interface` porque graphql-http exige un tipo con firma de índice.

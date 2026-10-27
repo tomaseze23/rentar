@@ -1,0 +1,10 @@
+# Configuración de Buf para validar los contratos gRPC.
+#   npx @bufbuild/buf lint
+version: v2
+modules:
+  - path: proto
+lint:
+  use:
+    - BASIC
+    - ENUM_VALUE_PREFIX
+    - RPC_REQUEST_RESPONSE_UNIQUE

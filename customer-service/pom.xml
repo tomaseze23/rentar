@@ -74,7 +74,7 @@
 				<groupId>org.springframework.boot</groupId>
 				<artifactId>spring-boot-maven-plugin</artifactId>
 			</plugin>
-			<!-- Genera las clases Java (mensajes + stubs gRPC) a partir de ../proto/cliente.proto -->
+			<!-- Genera las clases Java (mensajes + stubs gRPC) a partir de ../proto/rentar/cliente/v1/cliente.proto -->
 			<plugin>
 				<groupId>io.github.ascopes</groupId>
 				<artifactId>protobuf-maven-plugin</artifactId>
@@ -84,7 +84,7 @@
 						<sourceDirectory>${project.basedir}/../proto</sourceDirectory>
 					</sourceDirectories>
 					<includes>
-						<include>cliente.proto</include>
+						<include>rentar/cliente/v1/cliente.proto</include>
 					</includes>
 					<binaryMavenPlugins>
 						<binaryMavenPlugin>

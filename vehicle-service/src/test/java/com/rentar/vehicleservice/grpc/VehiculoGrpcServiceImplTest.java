@@ -2,7 +2,7 @@ package com.rentar.vehicleservice.grpc;
 
 import com.rentar.proto.vehiculo.ServicioVehiculosGrpc;
 import com.rentar.proto.vehiculo.SolicitudConsultarVehiculos;
-import com.rentar.proto.vehiculo.SolicitudIdVehiculo;
+import com.rentar.proto.vehiculo.SolicitudConsultarVehiculo;
 import com.rentar.vehicleservice.entities.EstadoVehiculo;
 import com.rentar.vehicleservice.entities.TipoVehiculo;
 import com.rentar.vehicleservice.entities.Vehiculo;
@@ -89,10 +89,10 @@ class VehiculoGrpcServiceImplTest {
         var stub = levantarServidorYObtenerStub(new VehiculoDomainService(repository));
 
         var response = stub.consultarVehiculo(
-                SolicitudIdVehiculo.newBuilder().setId(1L).build());
+                SolicitudConsultarVehiculo.newBuilder().setId(1L).build()).getVehiculo();
 
         assertEquals("AB123CD", response.getPatente());
-        assertEquals("SEDAN", response.getTipoVehiculo().name());
+        assertEquals("TIPO_VEHICULO_SEDAN", response.getTipoVehiculo().name());
     }
 
     @Test
@@ -102,7 +102,7 @@ class VehiculoGrpcServiceImplTest {
         var stub = levantarServidorYObtenerStub(new VehiculoDomainService(repository));
 
         StatusRuntimeException ex = assertThrows(StatusRuntimeException.class, () ->
-                stub.consultarVehiculo(SolicitudIdVehiculo.newBuilder().setId(999L).build()));
+                stub.consultarVehiculo(SolicitudConsultarVehiculo.newBuilder().setId(999L).build()));
 
         assertEquals(Status.Code.NOT_FOUND, ex.getStatus().getCode());
     }
@@ -117,7 +117,7 @@ class VehiculoGrpcServiceImplTest {
         var stub = levantarServidorYObtenerStub(new VehiculoDomainService(repository));
 
         var suvs = stub.consultarVehiculos(SolicitudConsultarVehiculos.newBuilder()
-                .setTipoVehiculo(com.rentar.proto.comun.TipoVehiculo.SUV).build());
+                .setTipoVehiculo(com.rentar.proto.comun.TipoVehiculo.TIPO_VEHICULO_SUV).build());
         assertEquals(List.of(2L, 3L), suvs.getVehiculosList().stream().map(v -> v.getId()).toList());
 
         var porIds = stub.consultarVehiculos(SolicitudConsultarVehiculos.newBuilder()
