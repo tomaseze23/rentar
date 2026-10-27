@@ -2,7 +2,8 @@
 FROM maven:3.9-eclipse-temurin-21 AS build
 WORKDIR /app
 
-COPY proto/alquiler.proto proto/comun.proto proto/
+COPY proto/rentar/alquiler/v1/alquiler.proto proto/rentar/alquiler/v1/
+COPY proto/rentar/comun/v1/comun.proto proto/rentar/comun/v1/
 COPY rental-service/rentalservice/pom.xml rental-service/rentalservice/
 RUN mvn -f rental-service/rentalservice/pom.xml -B -q dependency:go-offline
 

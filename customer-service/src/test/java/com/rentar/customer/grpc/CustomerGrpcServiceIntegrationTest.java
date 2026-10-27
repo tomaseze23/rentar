@@ -5,9 +5,12 @@ import com.rentar.proto.cliente.RespuestaValidarCredencialesLogin;
 import com.rentar.proto.cliente.RespuestaVerificarClienteActivo;
 import com.rentar.proto.cliente.ServicioClientesGrpc;
 import com.rentar.proto.cliente.SolicitudActualizarCliente;
+import com.rentar.proto.cliente.SolicitudConsultarCliente;
 import com.rentar.proto.cliente.SolicitudConsultarClientes;
 import com.rentar.proto.cliente.SolicitudCrearCliente;
-import com.rentar.proto.cliente.SolicitudIdCliente;
+import com.rentar.proto.cliente.SolicitudDarDeBajaCliente;
+import com.rentar.proto.cliente.SolicitudReactivarCliente;
+import com.rentar.proto.cliente.SolicitudVerificarClienteActivo;
 import com.rentar.proto.cliente.SolicitudValidarCredencialesLogin;
 import io.grpc.ManagedChannel;
 import io.grpc.Status;
@@ -66,23 +69,31 @@ class CustomerGrpcServiceIntegrationTest {
         throw new AssertionError("Se esperaba un error gRPC");
     }
 
+    private static SolicitudConsultarCliente consultar(long id) {
+        return SolicitudConsultarCliente.newBuilder().setId(id).build();
+    }
+
+    private static SolicitudVerificarClienteActivo verificar(long id) {
+        return SolicitudVerificarClienteActivo.newBuilder().setId(id).build();
+    }
+
     @Test
     void cicloDeVidaCompletoDeUnCliente() {
-        Cliente creado = stub.crearCliente(alta("juan@mail.com", "30123456"));
+        Cliente creado = stub.crearCliente(alta("juan@mail.com", "30123456")).getCliente();
         assertThat(creado.getId()).isPositive();
         assertThat(creado.getActivo()).isTrue();
         assertThat(creado.getFechaNacimiento()).isEqualTo("1990-05-20");
         assertThat(creado.hasTelefono()).isFalse();
 
-        SolicitudIdCliente id = SolicitudIdCliente.newBuilder().setId(creado.getId()).build();
-        assertThat(stub.consultarCliente(id).getEmail()).isEqualTo("juan@mail.com");
-        RespuestaVerificarClienteActivo verificacion = stub.verificarClienteActivo(id);
+        long id = creado.getId();
+        assertThat(stub.consultarCliente(consultar(id)).getCliente().getEmail()).isEqualTo("juan@mail.com");
+        RespuestaVerificarClienteActivo verificacion = stub.verificarClienteActivo(verificar(id));
         assertThat(verificacion.getExiste()).isTrue();
         assertThat(verificacion.getActivo()).isTrue();
 
         Cliente actualizado = stub.actualizarCliente(SolicitudActualizarCliente.newBuilder()
                 .setId(creado.getId()).setNombre("Juan Carlos").setApellido("Pérez").setTelefono("1122334455")
-                .build());
+                .build()).getCliente();
         assertThat(actualizado.getNombre()).isEqualTo("Juan Carlos");
         assertThat(actualizado.getTelefono()).isEqualTo("1122334455");
         assertThat(actualizado.hasFechaNacimiento()).isFalse();
@@ -93,8 +104,9 @@ class CustomerGrpcServiceIntegrationTest {
         assertThat(credenciales.getRol()).isEqualTo("CLIENTE");
         assertThat(credenciales.getClienteId()).isEqualTo(creado.getId());
 
-        assertThat(stub.darDeBajaCliente(id).getActivo()).isFalse();
-        verificacion = stub.verificarClienteActivo(id);
+        assertThat(stub.darDeBajaCliente(SolicitudDarDeBajaCliente.newBuilder().setId(id).build()).getCliente().getActivo())
+                .isFalse();
+        verificacion = stub.verificarClienteActivo(verificar(id));
         assertThat(verificacion.getExiste()).isTrue();
         assertThat(verificacion.getActivo()).isFalse();
         assertThat(stub.consultarClientes(SolicitudConsultarClientes.getDefaultInstance()).getClientesList())
@@ -106,8 +118,9 @@ class CustomerGrpcServiceIntegrationTest {
         assertThat(stub.validarCredencialesLogin(login("juan@mail.com", "secreto123")).getCredencialesValidas())
                 .isFalse();
 
-        assertThat(stub.reactivarCliente(id).getActivo()).isTrue();
-        assertThat(codigo(() -> stub.reactivarCliente(id))).isEqualTo(Status.Code.FAILED_PRECONDITION);
+        SolicitudReactivarCliente reactivar = SolicitudReactivarCliente.newBuilder().setId(id).build();
+        assertThat(stub.reactivarCliente(reactivar).getCliente().getActivo()).isTrue();
+        assertThat(codigo(() -> stub.reactivarCliente(reactivar))).isEqualTo(Status.Code.FAILED_PRECONDITION);
     }
 
     @Test
@@ -124,9 +137,8 @@ class CustomerGrpcServiceIntegrationTest {
                 alta("otra@mail.com", "1").toBuilder().setFechaNacimiento("20/05/1990").build())))
                 .isEqualTo(Status.Code.INVALID_ARGUMENT);
 
-        SolicitudIdCliente inexistente = SolicitudIdCliente.newBuilder().setId(9999).build();
-        assertThat(codigo(() -> stub.consultarCliente(inexistente))).isEqualTo(Status.Code.NOT_FOUND);
-        assertThat(stub.verificarClienteActivo(inexistente).getExiste()).isFalse();
+        assertThat(codigo(() -> stub.consultarCliente(consultar(9999)))).isEqualTo(Status.Code.NOT_FOUND);
+        assertThat(stub.verificarClienteActivo(verificar(9999)).getExiste()).isFalse();
     }
 
     @Test

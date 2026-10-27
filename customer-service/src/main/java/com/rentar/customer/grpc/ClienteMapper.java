@@ -16,7 +16,7 @@ import java.time.LocalDate;
 import java.time.format.DateTimeParseException;
 
 /**
- * Conversión entre los mensajes del contrato (proto/cliente.proto) y los DTOs del dominio.
+ * Conversión entre los mensajes del contrato (proto/rentar/cliente/v1/cliente.proto) y los DTOs del dominio.
  * Los campos optional del proto ausentes equivalen a null en el dominio.
  */
 final class ClienteMapper {

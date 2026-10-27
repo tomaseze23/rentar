@@ -8,12 +8,17 @@ import type { ProtoGrpcType as AlquilerProto } from '../generated/alquiler';
 export const PROTO_DIR = path.resolve(__dirname, '../../../proto');
 
 const definition = protoLoader.loadSync(
-    ['comun.proto', 'vehiculo.proto', 'cliente.proto', 'alquiler.proto'].map((f) => path.join(PROTO_DIR, f)),
+    [
+        'rentar/comun/v1/comun.proto',
+        'rentar/vehiculo/v1/vehiculo.proto',
+        'rentar/cliente/v1/cliente.proto',
+        'rentar/alquiler/v1/alquiler.proto',
+    ].map((f) => path.join(PROTO_DIR, f)),
     {
         includeDirs: [PROTO_DIR],
         keepCase: false, // snake_case del .proto -> camelCase
         longs: String, // los int64 llegan como string
-        enums: String, // los enums llegan como "SEDAN", "CONFIRMADA"...
+        enums: String, // los enums llegan como "TIPO_VEHICULO_SEDAN", "ESTADO_RESERVA_CONFIRMADA"...
         defaults: true,
         oneofs: true,
     },

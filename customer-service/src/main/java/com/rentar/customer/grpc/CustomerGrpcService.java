@@ -4,15 +4,22 @@ import com.rentar.customer.dtos.ClienteResponse;
 import com.rentar.customer.exceptions.AuthenticationException;
 import com.rentar.customer.services.AuthService;
 import com.rentar.customer.services.ClienteService;
-import com.rentar.proto.cliente.Cliente;
+import com.rentar.proto.cliente.RespuestaActualizarCliente;
+import com.rentar.proto.cliente.RespuestaConsultarCliente;
 import com.rentar.proto.cliente.RespuestaConsultarClientes;
+import com.rentar.proto.cliente.RespuestaCrearCliente;
+import com.rentar.proto.cliente.RespuestaDarDeBajaCliente;
+import com.rentar.proto.cliente.RespuestaReactivarCliente;
 import com.rentar.proto.cliente.RespuestaValidarCredencialesLogin;
 import com.rentar.proto.cliente.RespuestaVerificarClienteActivo;
 import com.rentar.proto.cliente.ServicioClientesGrpc;
 import com.rentar.proto.cliente.SolicitudActualizarCliente;
+import com.rentar.proto.cliente.SolicitudConsultarCliente;
 import com.rentar.proto.cliente.SolicitudConsultarClientes;
 import com.rentar.proto.cliente.SolicitudCrearCliente;
-import com.rentar.proto.cliente.SolicitudIdCliente;
+import com.rentar.proto.cliente.SolicitudDarDeBajaCliente;
+import com.rentar.proto.cliente.SolicitudReactivarCliente;
+import com.rentar.proto.cliente.SolicitudVerificarClienteActivo;
 import com.rentar.proto.cliente.SolicitudValidarCredencialesLogin;
 import io.grpc.stub.StreamObserver;
 import org.springframework.stereotype.Service;
@@ -20,7 +27,7 @@ import org.springframework.stereotype.Service;
 import java.util.List;
 
 /**
- * Implementación del servicio gRPC definido en proto/cliente.proto.
+ * Implementación del servicio gRPC definido en proto/rentar/cliente/v1/cliente.proto.
  * Sólo traduce mensajes: las reglas de negocio están en ClienteService y AuthService,
  * y las excepciones se convierten en códigos gRPC en GrpcErrorHandler.
  */
@@ -36,25 +43,31 @@ public class CustomerGrpcService extends ServicioClientesGrpc.ServicioClientesIm
     }
 
     @Override
-    public void crearCliente(SolicitudCrearCliente request, StreamObserver<Cliente> responseObserver) {
+    public void crearCliente(SolicitudCrearCliente request, StreamObserver<RespuestaCrearCliente> responseObserver) {
         ClienteResponse creado = clienteService.crear(ClienteMapper.toDomain(request));
-        responder(responseObserver, ClienteMapper.toProto(creado));
+        responder(responseObserver, RespuestaCrearCliente.newBuilder().setCliente(ClienteMapper.toProto(creado)).build());
     }
 
     @Override
-    public void actualizarCliente(SolicitudActualizarCliente request, StreamObserver<Cliente> responseObserver) {
+    public void actualizarCliente(SolicitudActualizarCliente request,
+                                  StreamObserver<RespuestaActualizarCliente> responseObserver) {
         ClienteResponse actualizado = clienteService.actualizar(request.getId(), ClienteMapper.toDomain(request));
-        responder(responseObserver, ClienteMapper.toProto(actualizado));
+        responder(responseObserver,
+                RespuestaActualizarCliente.newBuilder().setCliente(ClienteMapper.toProto(actualizado)).build());
     }
 
     @Override
-    public void darDeBajaCliente(SolicitudIdCliente request, StreamObserver<Cliente> responseObserver) {
-        responder(responseObserver, ClienteMapper.toProto(clienteService.darDeBaja(request.getId())));
+    public void darDeBajaCliente(SolicitudDarDeBajaCliente request,
+                                 StreamObserver<RespuestaDarDeBajaCliente> responseObserver) {
+        responder(responseObserver, RespuestaDarDeBajaCliente.newBuilder()
+                .setCliente(ClienteMapper.toProto(clienteService.darDeBaja(request.getId()))).build());
     }
 
     @Override
-    public void reactivarCliente(SolicitudIdCliente request, StreamObserver<Cliente> responseObserver) {
-        responder(responseObserver, ClienteMapper.toProto(clienteService.reactivar(request.getId())));
+    public void reactivarCliente(SolicitudReactivarCliente request,
+                                 StreamObserver<RespuestaReactivarCliente> responseObserver) {
+        responder(responseObserver, RespuestaReactivarCliente.newBuilder()
+                .setCliente(ClienteMapper.toProto(clienteService.reactivar(request.getId()))).build());
     }
 
     @Override
@@ -70,12 +83,14 @@ public class CustomerGrpcService extends ServicioClientesGrpc.ServicioClientesIm
     }
 
     @Override
-    public void consultarCliente(SolicitudIdCliente request, StreamObserver<Cliente> responseObserver) {
-        responder(responseObserver, ClienteMapper.toProto(clienteService.buscarPorId(request.getId())));
+    public void consultarCliente(SolicitudConsultarCliente request,
+                                 StreamObserver<RespuestaConsultarCliente> responseObserver) {
+        responder(responseObserver, RespuestaConsultarCliente.newBuilder()
+                .setCliente(ClienteMapper.toProto(clienteService.buscarPorId(request.getId()))).build());
     }
 
     @Override
-    public void verificarClienteActivo(SolicitudIdCliente request,
+    public void verificarClienteActivo(SolicitudVerificarClienteActivo request,
                                        StreamObserver<RespuestaVerificarClienteActivo> responseObserver) {
         responder(responseObserver, ClienteMapper.toProto(clienteService.verificarActivo(request.getId())));
     }

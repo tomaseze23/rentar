@@ -57,7 +57,7 @@ class RentalGrpcServiceTest {
                 ArgumentCaptor.forClass(RespuestaConsultarHistorial.class);
         verify(observer).onNext(response.capture());
         verify(observer).onCompleted();
-        assertEquals(EstadoHistorial.FINALIZADA, response.getValue().getAlquileres(0).getEstado());
+        assertEquals(EstadoHistorial.ESTADO_HISTORIAL_FINALIZADA, response.getValue().getAlquileres(0).getEstado());
         assertEquals(2, response.getValue().getAlquileres(0).getCantidadDias());
     }
 
@@ -67,7 +67,7 @@ class RentalGrpcServiceTest {
                 .thenThrow(Status.PERMISSION_DENIED.withDescription("No pertenece al cliente").asRuntimeException());
 
         @SuppressWarnings("unchecked")
-        StreamObserver<com.rentar.proto.alquiler.Reserva> observer = mock(StreamObserver.class);
+        StreamObserver<com.rentar.proto.alquiler.RespuestaCancelarReserva> observer = mock(StreamObserver.class);
         grpcService.cancelarReserva(
                 com.rentar.proto.alquiler.SolicitudCancelarReserva.newBuilder()
                         .setReservaId(5)
@@ -114,8 +114,8 @@ class RentalGrpcServiceTest {
         // La 3 (futura) y la 4 (en curso) no son historial todavía.
         assertEquals(List.of(1L, 2L), response.getValue().getAlquileresList().stream()
                 .map(HistorialAlquiler::getReservaId).toList());
-        assertEquals(EstadoHistorial.FINALIZADA, response.getValue().getAlquileres(0).getEstado());
-        assertEquals(EstadoHistorial.CANCELADA, response.getValue().getAlquileres(1).getEstado());
+        assertEquals(EstadoHistorial.ESTADO_HISTORIAL_FINALIZADA, response.getValue().getAlquileres(0).getEstado());
+        assertEquals(EstadoHistorial.ESTADO_HISTORIAL_CANCELADA, response.getValue().getAlquileres(1).getEstado());
     }
 
     @Test
