@@ -12,3 +12,8 @@ psql_en postgres          /scripts/00_crear_bases.sql
 psql_en rentar_clientes   /scripts/01_clientes.sql
 psql_en rentar_vehiculos  /scripts/02_vehiculos.sql
 psql_en rentar_alquileres /scripts/03_alquileres.sql
+
+# Datos de prueba (clientes, vehículos y reservas). Si no los querés, borrá o comentá estas líneas.
+psql_en rentar_clientes   /scripts/04_datos_prueba_clientes.sql
+psql_en rentar_vehiculos  /scripts/05_datos_prueba_vehiculos.sql
+psql_en rentar_alquileres /scripts/06_datos_prueba_alquileres.sql

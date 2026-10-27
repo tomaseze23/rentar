@@ -1,7 +1,7 @@
 # Customer Service (gRPC)
 
 Servicio responsable del dominio **clientes** de Rentar (Hito 2). Implementa el contrato
-[`../proto/cliente.proto`](../proto/cliente.proto) (`rentar.cliente.v1.ServicioClientes`)
+[`../proto/rentar/cliente/v1/cliente.proto`](../proto/rentar/cliente/v1/cliente.proto) (`rentar.cliente.v1.ServicioClientes`)
 y es el único dueño de la base `rentar_clientes`.
 
 - **Lenguaje:** Java 21 + Spring Boot 4.1 (Spring gRPC). El API Gateway está en Node.
@@ -37,7 +37,7 @@ src/main/java/com/rentar/customer/
 ```
 
 Las clases Java del contrato (paquete `com.rentar.proto.cliente`) **no se versionan**:
-el `protobuf-maven-plugin` las genera en `target/` desde `../proto/cliente.proto` al compilar.
+el `protobuf-maven-plugin` las genera en `target/` desde `../proto/rentar/cliente/v1/cliente.proto` al compilar.
 
 ## Cómo correrlo
 
@@ -65,7 +65,7 @@ docker compose up --build
 Levanta PostgreSQL (crea las tres bases con los scripts de `database/` la primera vez) y el
 Customer Service en `localhost:9092`. `docker compose down -v` borra las bases para empezar de cero.
 
-La imagen se construye desde la raíz porque necesita `proto/cliente.proto`:
+La imagen se construye desde la raíz porque necesita `proto/rentar/cliente/v1/cliente.proto`:
 
 ```bash
 docker build -f customer-service/Dockerfile -t rentar/customer-service .

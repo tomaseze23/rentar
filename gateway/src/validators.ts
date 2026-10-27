@@ -1,5 +1,5 @@
 import { HttpError } from './errors';
-import type { TipoVehiculo } from './generated/rentar/comun/v1/TipoVehiculo';
+import type { TipoVehiculo } from './dominio';
 
 export const TIPOS_VEHICULO = ['SEDAN', 'SUV', 'PICKUP', 'COUPE', 'HATCHBACK'];
 

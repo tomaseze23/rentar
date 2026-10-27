@@ -28,7 +28,7 @@ public class RentalGrpcService extends ServicioAlquileresGrpc.ServicioAlquileres
     }
 
     @Override
-    public void crearReserva(SolicitudCrearReserva request, StreamObserver<com.rentar.proto.alquiler.Reserva> observer) {
+    public void crearReserva(SolicitudCrearReserva request, StreamObserver<RespuestaCrearReserva> observer) {
         respond(observer, () -> {
             Periodo periodo = request.getPeriodo();
             Reserva reserva = reservaService.crearReserva(
@@ -37,7 +37,7 @@ public class RentalGrpcService extends ServicioAlquileresGrpc.ServicioAlquileres
                     periodo.getFechaInicio(),
                     periodo.getFechaFin(),
                     request.getPrecioDiario());
-            return mapReserva(reserva);
+            return RespuestaCrearReserva.newBuilder().setReserva(mapReserva(reserva)).build();
         });
     }
 
@@ -79,9 +79,10 @@ public class RentalGrpcService extends ServicioAlquileresGrpc.ServicioAlquileres
 
     @Override
     public void cancelarReserva(SolicitudCancelarReserva request,
-                                StreamObserver<com.rentar.proto.alquiler.Reserva> observer) {
-        respond(observer, () -> mapReserva(
-                reservaService.cancelarReserva(request.getReservaId(), request.getClienteId())));
+                                StreamObserver<RespuestaCancelarReserva> observer) {
+        respond(observer, () -> RespuestaCancelarReserva.newBuilder()
+                .setReserva(mapReserva(reservaService.cancelarReserva(request.getReservaId(), request.getClienteId())))
+                .build());
     }
 
     @Override
@@ -124,9 +125,9 @@ public class RentalGrpcService extends ServicioAlquileresGrpc.ServicioAlquileres
 
     private static EstadoReserva mapEstado(com.rentar.proto.comun.EstadoReserva estado) {
         return switch (estado) {
-            case PENDIENTE -> EstadoReserva.PENDIENTE;
-            case CONFIRMADA -> EstadoReserva.CONFIRMADA;
-            case CANCELADA -> EstadoReserva.CANCELADA;
+            case ESTADO_RESERVA_PENDIENTE -> EstadoReserva.PENDIENTE;
+            case ESTADO_RESERVA_CONFIRMADA -> EstadoReserva.CONFIRMADA;
+            case ESTADO_RESERVA_CANCELADA -> EstadoReserva.CANCELADA;
             case ESTADO_RESERVA_NO_ESPECIFICADO -> null;
             case UNRECOGNIZED -> throw Status.INVALID_ARGUMENT
                     .withDescription("estado de reserva inválido").asRuntimeException();
@@ -135,10 +136,10 @@ public class RentalGrpcService extends ServicioAlquileresGrpc.ServicioAlquileres
 
     private static EstadoHistorial estadoHistorial(Reserva reserva, LocalDateTime ahora) {
         if (reserva.getEstado() == EstadoReserva.CANCELADA) {
-            return EstadoHistorial.CANCELADA;
+            return EstadoHistorial.ESTADO_HISTORIAL_CANCELADA;
         }
         if (reserva.getEstado() == EstadoReserva.CONFIRMADA && !reserva.getFechaFin().isAfter(ahora)) {
-            return EstadoHistorial.FINALIZADA;
+            return EstadoHistorial.ESTADO_HISTORIAL_FINALIZADA;
         }
         return EstadoHistorial.ESTADO_HISTORIAL_NO_ESPECIFICADO;
     }
@@ -153,9 +154,9 @@ public class RentalGrpcService extends ServicioAlquileresGrpc.ServicioAlquileres
                 .setPrecioDiario(reserva.getPrecioDiario().doubleValue())
                 .setImporteTotal(reserva.getImporteTotal().doubleValue())
                 .setEstado(switch (reserva.getEstado()) {
-                    case PENDIENTE -> com.rentar.proto.comun.EstadoReserva.PENDIENTE;
-                    case CONFIRMADA -> com.rentar.proto.comun.EstadoReserva.CONFIRMADA;
-                    case CANCELADA -> com.rentar.proto.comun.EstadoReserva.CANCELADA;
+                    case PENDIENTE -> com.rentar.proto.comun.EstadoReserva.ESTADO_RESERVA_PENDIENTE;
+                    case CONFIRMADA -> com.rentar.proto.comun.EstadoReserva.ESTADO_RESERVA_CONFIRMADA;
+                    case CANCELADA -> com.rentar.proto.comun.EstadoReserva.ESTADO_RESERVA_CANCELADA;
                 })
                 .build();
     }

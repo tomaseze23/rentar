@@ -1,0 +1,70 @@
+// =============================================================================
+// Rentar - Tipos comunes
+// =============================================================================
+//
+// Enums y mensajes compartidos por los contratos de los servicios de Vehículos
+// y de Alquileres. No define servicios: solo los tipos que se repiten.
+//
+// Convenciones (valen para todos los .proto del proyecto):
+//   - Los valores de cada enum llevan como prefijo el nombre del enum en
+//     MAYÚSCULAS (TipoVehiculo -> TIPO_VEHICULO_*).
+//   - El valor 0 de cada enum es "NO_ESPECIFICADO" y significa que el campo
+//     no vino informado. Nunca es un dato válido para guardar.
+//   - Las fechas con hora viajan como texto "yyyy-MM-ddTHH:mm:ss" (ISO-8601 sin
+//     zona horaria, hora local).
+// =============================================================================
+
+syntax = "proto3";
+
+package rentar.comun.v1;
+
+option java_multiple_files = true;
+option java_package = "com.rentar.proto.comun";
+
+// Tipo de carrocería de un vehículo.
+enum TipoVehiculo {
+  // El tipo no fue informado. No es un tipo válido para un vehículo.
+  TIPO_VEHICULO_NO_ESPECIFICADO = 0;
+  TIPO_VEHICULO_SEDAN = 1;
+  TIPO_VEHICULO_SUV = 2;
+  TIPO_VEHICULO_PICKUP = 3;
+  TIPO_VEHICULO_COUPE = 4;
+  TIPO_VEHICULO_HATCHBACK = 5;
+}
+
+// Estado operativo de un vehículo. Es independiente de que el vehículo esté
+// activo o dado de baja (la baja lógica es el campo "activo").
+enum EstadoVehiculo {
+  // El estado no fue informado. No es un estado válido para un vehículo.
+  ESTADO_VEHICULO_NO_ESPECIFICADO = 0;
+  // Libre para ser reservado.
+  ESTADO_VEHICULO_DISPONIBLE = 1;
+  // Tiene una reserva asignada.
+  ESTADO_VEHICULO_RESERVADO = 2;
+  // Está alquilado en este momento.
+  ESTADO_VEHICULO_EN_ALQUILER = 3;
+}
+
+// Estado de una reserva.
+enum EstadoReserva {
+  // El estado no fue informado. En un filtro significa "cualquier estado".
+  ESTADO_RESERVA_NO_ESPECIFICADO = 0;
+  ESTADO_RESERVA_PENDIENTE = 1;
+  // Reserva vigente. Solo las reservas confirmadas ocupan el vehículo.
+  ESTADO_RESERVA_CONFIRMADA = 2;
+  // Reserva cancelada por el cliente. Libera el vehículo.
+  ESTADO_RESERVA_CANCELADA = 3;
+}
+
+// Período de tiempo con inicio y fin.
+//
+// Ambas fechas son obligatorias, con formato "yyyy-MM-ddTHH:mm:ss"
+// (ej: "2026-10-10T10:00:00"). fecha_fin tiene que ser posterior a
+// fecha_inicio. Los extremos son abiertos: dos períodos que solo se tocan en un
+// extremo (uno termina cuando el otro empieza) no se superponen.
+message Periodo {
+  // Inicio del período. "yyyy-MM-ddTHH:mm:ss".
+  string fecha_inicio = 1;
+  // Fin del período. "yyyy-MM-ddTHH:mm:ss". Posterior a fecha_inicio.
+  string fecha_fin = 2;
+}

@@ -47,7 +47,7 @@ const handlers = {
     };
     usuarios.push(u);
     clientes.push(c);
-    cb(null, c);
+    cb(null, { cliente: c });
   },
 
   ActualizarCliente: (call, cb) => {
@@ -55,7 +55,7 @@ const handlers = {
     const c = buscar(r.id);
     if (!c) return cb(noExiste(r.id));
     Object.assign(c, { nombre: r.nombre, apellido: r.apellido, telefono: r.telefono, fechaNacimiento: r.fechaNacimiento });
-    cb(null, c);
+    cb(null, { cliente: c });
   },
 
   DarDeBajaCliente: (call, cb) => {
@@ -64,7 +64,7 @@ const handlers = {
     c.activo = false;
     const u = usuarios.find((x) => x.id === c.usuarioId);
     if (u) u.activo = false; // un cliente dado de baja no puede iniciar sesión
-    cb(null, c);
+    cb(null, { cliente: c });
   },
 
   ReactivarCliente: (call, cb) => {
@@ -74,7 +74,7 @@ const handlers = {
     c.activo = true;
     const u = usuarios.find((x) => x.id === c.usuarioId);
     if (u) u.activo = true;
-    cb(null, c);
+    cb(null, { cliente: c });
   },
 
   ConsultarClientes: (call, cb) => {
@@ -83,7 +83,7 @@ const handlers = {
 
   ConsultarCliente: (call, cb) => {
     const c = buscar(call.request.id);
-    c ? cb(null, c) : cb(noExiste(call.request.id));
+    c ? cb(null, { cliente: c }) : cb(noExiste(call.request.id));
   },
 
   VerificarClienteActivo: (call, cb) => {

@@ -1,5 +1,5 @@
 *
-!proto/alquiler.proto
-!proto/comun.proto
+!proto/rentar/alquiler/v1/alquiler.proto
+!proto/rentar/comun/v1/comun.proto
 !rental-service/rentalservice/pom.xml
 !rental-service/rentalservice/src/main/**

@@ -1,0 +1,255 @@
+// =============================================================================
+// Rentar - Servicio de Vehículos (Vehicle Service)
+// =============================================================================
+//
+// Contrato gRPC del servicio responsable del dominio vehículos: la flota de
+// Rentar. Es el único dueño de la base rentar_vehiculos (tabla vehiculo): ni el
+// API Gateway ni los demás servicios acceden a ella directamente.
+//
+// Convenciones:
+//   - Cada RPC tiene su propio mensaje de solicitud y su propio mensaje de
+//     respuesta (SolicitudXxx / RespuestaXxx). Las respuestas que devuelven un
+//     vehículo lo traen en el campo "vehiculo".
+//   - Los identificadores son int64 positivos.
+//   - La baja de un vehículo es lógica (campo activo); nunca se borra de la base.
+//   - Los campos optional ausentes significan "sin dato" o "sin filtro".
+//
+// Errores: se informan con los códigos de estado estándar de gRPC.
+//   INVALID_ARGUMENT     datos obligatorios faltantes o con formato inválido
+//   NOT_FOUND            el vehículo pedido no existe
+//   ALREADY_EXISTS       la patente ya está registrada
+//   FAILED_PRECONDITION  la operación no aplica al estado actual del vehículo
+//                        (ej: reactivar un vehículo que ya está activo)
+// =============================================================================
+
+syntax = "proto3";
+
+package rentar.vehiculo.v1;
+
+option java_multiple_files = true;
+option java_package = "com.rentar.proto.vehiculo";
+
+import "rentar/comun/v1/comun.proto";
+
+// Gestión y consulta de la flota de vehículos.
+//
+// Para validar la disponibilidad de un período el Gateway combina este servicio
+// con el Rental Service: Rental informa qué vehículos están ocupados y este
+// servicio filtra el resto.
+service ServicioVehiculos {
+
+  // Crea un vehículo nuevo. Queda en estado ESTADO_VEHICULO_DISPONIBLE y
+  // activo.
+  // Datos requeridos: patente (única), marca, modelo, anio (numérico, entre
+  // 1900 y el año actual), tipo_vehiculo y precio_diario (mayor a 0).
+  // Opcional: color.
+  // Responde el vehículo creado con su id.
+  // Errores: INVALID_ARGUMENT (campos obligatorios faltantes o año inválido),
+  // ALREADY_EXISTS (patente duplicada).
+  rpc CrearVehiculo(SolicitudCrearVehiculo) returns (RespuestaCrearVehiculo);
+
+  // Modifica los datos de un vehículo existente. La patente no se puede
+  // modificar y por eso no forma parte de la solicitud. Se reemplazan todos
+  // los datos (como un PUT).
+  // Datos requeridos: id, marca, modelo, anio, tipo_vehiculo y precio_diario.
+  // Responde el vehículo actualizado.
+  // Errores: NOT_FOUND (id inexistente), INVALID_ARGUMENT (campos
+  // obligatorios faltantes o año inválido).
+  rpc ActualizarVehiculo(SolicitudActualizarVehiculo)
+      returns (RespuestaActualizarVehiculo);
+
+  // Baja lógica: marca el vehículo como inactivo. No se elimina de la base ni
+  // se pierden las reservas históricas. Un vehículo inactivo no se ofrece como
+  // disponible.
+  // Responde el vehículo ya dado de baja.
+  // Errores: NOT_FOUND (id inexistente).
+  rpc DarDeBajaVehiculo(SolicitudDarDeBajaVehiculo)
+      returns (RespuestaDarDeBajaVehiculo);
+
+  // Reactiva un vehículo dado de baja.
+  // Responde el vehículo reactivado.
+  // Errores: NOT_FOUND (id inexistente), FAILED_PRECONDITION (el vehículo ya
+  // estaba activo).
+  rpc ReactivarVehiculo(SolicitudReactivarVehiculo)
+      returns (RespuestaReactivarVehiculo);
+
+  // Lista vehículos. Permite filtrar opcionalmente por activo/inactivo, por
+  // tipo de vehículo y/o por una lista puntual de ids; los filtros se
+  // combinan. Sin filtros trae todos. Sin resultados responde una lista vacía.
+  rpc ConsultarVehiculos(SolicitudConsultarVehiculos)
+      returns (RespuestaConsultarVehiculos);
+
+  // Consulta un vehículo por id, esté activo o dado de baja.
+  // Errores: NOT_FOUND (id inexistente).
+  rpc ConsultarVehiculo(SolicitudConsultarVehiculo)
+      returns (RespuestaConsultarVehiculo);
+
+  // Usado por el API Gateway para la pantalla de disponibilidad: filtra
+  // vehículos activos por tipo, marca, modelo (búsqueda parcial) y rango de
+  // precio, excluyendo los ids que ya están ocupados en el período consultado
+  // (ese cálculo lo hace el Rental Service y el Gateway pasa el resultado acá).
+  // Errores: INVALID_ARGUMENT (precio_min mayor a precio_max).
+  rpc ConsultarDisponibilidad(SolicitudConsultarDisponibilidad)
+      returns (RespuestaConsultarDisponibilidad);
+
+  // Cambia el estado operativo de un vehículo (DISPONIBLE, RESERVADO,
+  // EN_ALQUILER). Usado por el API Gateway, coordinando con el Rental Service,
+  // al confirmar o finalizar una reserva.
+  // Responde el vehículo con el estado nuevo.
+  // Errores: NOT_FOUND (id inexistente), INVALID_ARGUMENT (estado inválido o
+  // sin especificar).
+  rpc ActualizarEstadoVehiculo(SolicitudActualizarEstadoVehiculo)
+      returns (RespuestaActualizarEstadoVehiculo);
+}
+
+// Representación completa de un vehículo, tal como se devuelve al cliente.
+message Vehiculo {
+  // Identificador del vehículo, asignado por el servicio al crearlo.
+  int64 id = 1;
+
+  // Patente. Única en el sistema e inmodificable.
+  string patente = 2;
+  string marca = 3;
+  string modelo = 4;
+
+  // Año de fabricación, como texto numérico de 4 dígitos (ej: "2022").
+  string anio = 5;
+
+  optional string color = 6;
+  rentar.comun.v1.TipoVehiculo tipo_vehiculo = 7;
+
+  // Precio de alquiler por día. Mayor a 0.
+  double precio_diario = 8;
+
+  // Estado operativo actual (disponible, reservado o en alquiler).
+  rentar.comun.v1.EstadoVehiculo estado = 9;
+
+  // false si el vehículo fue dado de baja (baja lógica).
+  bool activo = 10;
+}
+
+// Datos para dar de alta un vehículo. patente, marca, modelo, anio,
+// tipo_vehiculo y precio_diario son obligatorios; color es opcional.
+message SolicitudCrearVehiculo {
+  // Patente. Obligatoria y única.
+  string patente = 1;
+  string marca = 2;
+  string modelo = 3;
+  // Año de fabricación, texto numérico entre 1900 y el año actual.
+  string anio = 4;
+  optional string color = 5;
+  // Obligatorio: no puede ser TIPO_VEHICULO_NO_ESPECIFICADO.
+  rentar.comun.v1.TipoVehiculo tipo_vehiculo = 6;
+  // Mayor a 0.
+  double precio_diario = 7;
+}
+
+// Vehículo creado.
+message RespuestaCrearVehiculo {
+  Vehiculo vehiculo = 1;
+}
+
+// Datos para modificar un vehículo existente. No incluye patente: no es
+// modificable.
+message SolicitudActualizarVehiculo {
+  // Id del vehículo a modificar.
+  int64 id = 1;
+  string marca = 2;
+  string modelo = 3;
+  string anio = 4;
+  optional string color = 5;
+  rentar.comun.v1.TipoVehiculo tipo_vehiculo = 6;
+  double precio_diario = 7;
+}
+
+// Vehículo con los datos ya actualizados.
+message RespuestaActualizarVehiculo {
+  Vehiculo vehiculo = 1;
+}
+
+// Vehículo a dar de baja.
+message SolicitudDarDeBajaVehiculo {
+  // Id del vehículo.
+  int64 id = 1;
+}
+
+// Vehículo ya dado de baja (activo = false).
+message RespuestaDarDeBajaVehiculo {
+  Vehiculo vehiculo = 1;
+}
+
+// Vehículo a reactivar.
+message SolicitudReactivarVehiculo {
+  // Id del vehículo.
+  int64 id = 1;
+}
+
+// Vehículo ya reactivado (activo = true).
+message RespuestaReactivarVehiculo {
+  Vehiculo vehiculo = 1;
+}
+
+// Filtros opcionales para listar vehículos. Sin filtros, trae todos.
+message SolicitudConsultarVehiculos {
+  // true: solo activos; false: solo dados de baja; ausente: ambos.
+  optional bool activo = 1;
+
+  // Filtra por tipo. Ausente o TIPO_VEHICULO_NO_ESPECIFICADO: todos los tipos.
+  optional rentar.comun.v1.TipoVehiculo tipo_vehiculo = 2;
+
+  // Si no está vacía, devuelve solo los vehículos con esos ids. Vacía: sin
+  // filtro por id.
+  repeated int64 ids = 3;
+}
+
+// Vehículos que cumplen los filtros. Lista vacía si no hay ninguno.
+message RespuestaConsultarVehiculos {
+  repeated Vehiculo vehiculos = 1;
+}
+
+// Vehículo a consultar.
+message SolicitudConsultarVehiculo {
+  // Id del vehículo.
+  int64 id = 1;
+}
+
+// Vehículo pedido.
+message RespuestaConsultarVehiculo {
+  Vehiculo vehiculo = 1;
+}
+
+// Todos los campos son opcionales. marca y modelo hacen búsqueda parcial
+// (contiene, sin distinguir mayúsculas). vehiculos_ocupados_ids es la lista
+// de ids a excluir del resultado, calculada por el Rental Service para el
+// período consultado.
+message SolicitudConsultarDisponibilidad {
+  optional rentar.comun.v1.TipoVehiculo tipo_vehiculo = 1;
+  optional string marca = 2;
+  optional string modelo = 3;
+  // Precio diario mínimo (inclusive).
+  optional double precio_min = 4;
+  // Precio diario máximo (inclusive). No puede ser menor que precio_min.
+  optional double precio_max = 5;
+
+  // Ids de vehículos ocupados en el período, que se excluyen del resultado.
+  repeated int64 vehiculos_ocupados_ids = 6;
+}
+
+// Vehículos activos que cumplen los filtros y no están ocupados.
+message RespuestaConsultarDisponibilidad {
+
+  repeated Vehiculo vehiculos = 1;
+}
+
+// Cambio de estado operativo de un vehículo.
+message SolicitudActualizarEstadoVehiculo {
+  // Id del vehículo.
+  int64 vehiculo_id = 1;
+  // Estado nuevo. No puede ser ESTADO_VEHICULO_NO_ESPECIFICADO.
+  rentar.comun.v1.EstadoVehiculo estado = 2;
+}
+
+// Vehículo con el estado ya cambiado.
+message RespuestaActualizarEstadoVehiculo {
+  Vehiculo vehiculo = 1;
+}
