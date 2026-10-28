@@ -2,11 +2,19 @@ import * as grpc from '@grpc/grpc-js';
 import { config } from '../config';
 import { proto } from './loader';
 import { aProto, deProto } from '../dominio';
-import type { TipoVehiculo, EstadoVehiculo, EstadoReserva, EstadoHistorial } from '../dominio';
+import type {
+  TipoVehiculo, EstadoVehiculo, EstadoReserva, EstadoHistorial,
+  Verificacion, ResultadoValidacion, EstadoSolicitud, Mantenimiento,
+} from '../dominio';
 
 
 // vehiculos
 import type { Vehiculo__Output } from '../generated/rentar/vehiculo/v1/Vehiculo';
+import type { IncorporacionExterna__Output } from '../generated/rentar/vehiculo/v1/IncorporacionExterna';
+import type { SolicitudIncorporarVehiculoExterno, SolicitudIncorporarVehiculoExterno__Output } from '../generated/rentar/vehiculo/v1/SolicitudIncorporarVehiculoExterno';
+import type { RespuestaIncorporarVehiculoExterno, RespuestaIncorporarVehiculoExterno__Output } from '../generated/rentar/vehiculo/v1/RespuestaIncorporarVehiculoExterno';
+import type { SolicitudConsultarSolicitudesIncorporacion, SolicitudConsultarSolicitudesIncorporacion__Output } from '../generated/rentar/vehiculo/v1/SolicitudConsultarSolicitudesIncorporacion';
+import type { RespuestaConsultarSolicitudesIncorporacion, RespuestaConsultarSolicitudesIncorporacion__Output } from '../generated/rentar/vehiculo/v1/RespuestaConsultarSolicitudesIncorporacion';
 import type { SolicitudCrearVehiculo } from '../generated/rentar/vehiculo/v1/SolicitudCrearVehiculo';
 import type { SolicitudActualizarVehiculo } from '../generated/rentar/vehiculo/v1/SolicitudActualizarVehiculo';
 import type { SolicitudDarDeBajaVehiculo } from '../generated/rentar/vehiculo/v1/SolicitudDarDeBajaVehiculo';
@@ -85,14 +93,42 @@ const creds = grpc.credentials.createInsecure();
 // gateway no conoce los prefijos.
 
 // ---------- vehículos ----------
-export type VehiculoGw = Omit<Vehiculo__Output, 'tipoVehiculo' | 'estado'> & {
+export type VehiculoGw = Omit<Vehiculo__Output, 'tipoVehiculo' | 'estado' | 'verificacion'> & {
   tipoVehiculo: TipoVehiculo;
   estado: EstadoVehiculo;
+  verificacion: Verificacion;
 };
 const vehiculoGw = (v: Vehiculo__Output | null | undefined): VehiculoGw => {
   const x = v as Vehiculo__Output;
-  return { ...x, tipoVehiculo: deProto.tipo(x.tipoVehiculo), estado: deProto.estadoVehiculo(x.estado) };
+  return { 
+    ...x, 
+    tipoVehiculo: deProto.tipo(x.tipoVehiculo), 
+    estado: deProto.estadoVehiculo(x.estado),
+    verificacion: deProto.verificacion(x.verificacion),
+  };
 };
+
+// Solicitud de incorporación de un vehículo externo (Hito 3).
+export type IncorporacionGw = Omit<
+  IncorporacionExterna__Output,
+  'tipoVehiculo' | 'estado' | 'validacionPatente' | 'validacionTitularidad'
+> & {
+  tipoVehiculo: TipoVehiculo;
+  estado: EstadoSolicitud;
+  validacionPatente: ResultadoValidacion;
+  validacionTitularidad: ResultadoValidacion;
+};
+const incorporacionGw = (i: IncorporacionExterna__Output | null | undefined): IncorporacionGw => {
+  const x = i as IncorporacionExterna__Output;
+  return {
+    ...x,
+    tipoVehiculo: deProto.tipo(x.tipoVehiculo),
+    estado: deProto.estadoSolicitud(x.estado),
+    validacionPatente: deProto.validacion(x.validacionPatente),
+    validacionTitularidad: deProto.validacion(x.validacionTitularidad),
+  };
+};
+
 type ConTipo<T> = Omit<T, 'tipoVehiculo'> & { tipoVehiculo?: TipoVehiculo };
 
 const vClient = new proto.rentar.vehiculo.v1.ServicioVehiculos(config.vehiculoAddr, creds);
@@ -104,6 +140,8 @@ const vConsultar = unary<SolicitudConsultarVehiculo, RespuestaConsultarVehiculo_
 const vVarios = unary<SolicitudConsultarVehiculos, RespuestaConsultarVehiculos__Output>(vClient, 'ConsultarVehiculos');
 const vDisp = unary<SolicitudConsultarDisponibilidad, RespuestaConsultarDisponibilidad__Output>(vClient, 'ConsultarDisponibilidad');
 const vEstado = unary<SolicitudActualizarEstadoVehiculo, RespuestaActualizarEstadoVehiculo__Output>(vClient, 'ActualizarEstadoVehiculo');
+const vIncorporar = unary<SolicitudIncorporarVehiculoExterno, RespuestaIncorporarVehiculoExterno__Output>(vClient, 'IncorporarVehiculoExterno');
+const vSolicitudes = unary<SolicitudConsultarSolicitudesIncorporacion, RespuestaConsultarSolicitudesIncorporacion__Output>(vClient, 'ConsultarSolicitudesIncorporacion');
 
 export const vehiculos = {
   crear: async (r: ConTipo<SolicitudCrearVehiculo> & { tipoVehiculo: TipoVehiculo }) =>
@@ -126,6 +164,14 @@ export const vehiculos = {
       (await vEstado({ vehiculoId: r.vehiculoId, estado: aProto.estadoVehiculo(r.estado) } as SolicitudActualizarEstadoVehiculo))
         .vehiculo,
     ),
+    incorporarExterno: async (r: ConTipo<SolicitudIncorporarVehiculoExterno> & {tipoVehiculo: TipoVehiculo }) =>
+      incorporacionGw(
+        (await vIncorporar({ ...r, tipoVehiculo: aProto.tipo(r.tipoVehiculo) } as SolicitudIncorporarVehiculoExterno)).solicitud,
+      ),
+    consultarSolicitudes: async(r: SolicitudConsultarSolicitudesIncorporacion) => {
+      const res = await vSolicitudes(r);
+      return { solicitudes: res.solicitudes.map(incorporacionGw) };
+    },
 };
 
 // ---------- clientes ----------
@@ -148,11 +194,14 @@ export const clientes = {
 };
 
 // ---------- reservas ----------
-export type ReservaGw = Omit<Reserva__Output, 'estado'> & { estado: EstadoReserva };
+export type ReservaGw = Omit<Reserva__Output, 'estado' | 'mantenimiento'> & { 
+  estado: EstadoReserva 
+  mantenimiento: Mantenimiento;
+};
 export type HistorialGw = Omit<HistorialAlquiler__Output, 'estado'> & { estado: EstadoHistorial };
 const reservaGw = (r: Reserva__Output | null | undefined): ReservaGw => {
   const x = r as Reserva__Output;
-  return { ...x, estado: deProto.estadoReserva(x.estado) };
+  return { ...x, estado: deProto.estadoReserva(x.estado), mantenimiento: deProto.mantenimiento(x.mantenimiento) };
 };
 
 const aClient = new proto.rentar.alquiler.v1.ServicioAlquileres(config.alquilerAddr, creds);
