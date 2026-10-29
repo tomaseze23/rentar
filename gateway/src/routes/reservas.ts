@@ -26,9 +26,14 @@ reservasRouter.post(
     if (!c.existe) throw new HttpError(404, 'No existe un cliente asociado al usuario autenticado');
     if (!c.activo) throw new HttpError(422, 'El cliente no se encuentra activo para realizar reservas');
 
+
     // 2) Vehicle: ¿existe (si no, NOT_FOUND -> 404) y está activo? De acá sale el precio.
     const v = await vehiculos.consultar({ id: d.vehiculoId });
     if (!v.activo) throw new HttpError(422, 'El vehículo no se encuentra activo');
+    
+    // Hito 3: un vehículo ROBADO (según el registro policial) queda inhabilitado, igual que uno dado de baja.
+    // Con verificación PENDIENTE sí se puede reservar: solo se inhabilita si el resultado es ROBADO.
+    if (v.verificacion === 'ROBADO') throw new HttpError(422, 'El vehículo no se encuentra habilitado para alquilar');
 
     // 3) Rental: crea la reserva (verifica solapamiento y calcula el importe)
     const reserva = await alquileres.crearReserva({

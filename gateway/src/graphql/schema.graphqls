@@ -214,16 +214,6 @@ enum EstadoReserva {
     CANCELADA
 }
 
-"Resultado del mantenimiento preventivo asociado a la reserva."
-enum ResultadoMantenimiento {
-    "La solicitud de mantenimiento todavía no fue procesada."
-    PENDIENTE
-    "El mantenimiento se realizó."
-    REALIZADO
-    "El mantenimiento no se pudo realizar."
-    NO_REALIZADO
-}
-
 "Reserva tal como la ve la pantalla de consulta de reservas."
 type ReservaConsulta {
     "Id de la reserva."
@@ -248,8 +238,8 @@ type ReservaConsulta {
     importeTotal: String!
     "Estado de la reserva, uno de los valores de estadoReserva."
     estado: String!
-    "Resultado asíncrono del mantenimiento preventivo asociado."
-    mantenimiento: ResultadoMantenimiento!
+    "Resultado del mantenimiento preventivo (se procesa de forma asíncrona): PENDIENTE, REALIZADO o NO_REALIZADO. La reserva se confirma sin esperarlo."
+    mantenimiento: String!
 }
 
 "Un alquiler del historial del cliente."

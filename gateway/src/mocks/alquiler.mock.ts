@@ -3,17 +3,18 @@ import { proto } from '../grpc/loader';
 import { grpcError, serve } from './server';
 import type { ServicioAlquileresHandlers } from '../generated/rentar/alquiler/v1/ServicioAlquileres';
 import type { EstadoReserva } from '../generated/rentar/comun/v1/EstadoReserva';
+import type { ResultadoMantenimiento } from '../generated/rentar/alquiler/v1/ResultadoMantenimiento';
+
 
 interface Reserva {
   id: number; clienteId: number; vehiculoId: number; fechaInicio: string; fechaFin: string;
-  precioDiario: number; importeTotal: number; estado: EstadoReserva;
-  mantenimiento: 'RESULTADO_MANTENIMIENTO_PENDIENTE' | 'RESULTADO_MANTENIMIENTO_REALIZADO' | 'RESULTADO_MANTENIMIENTO_NO_REALIZADO';
+  precioDiario: number; importeTotal: number; estado: EstadoReserva; mantenimiento: ResultadoMantenimiento;
 }
 
 // Fechas en formato yyyy-MM-dd'T'HH:mm:ss (sin zona horaria).
 const reservas: Reserva[] = [
   // Reserva pasada: en el historial aparece como FINALIZADA (se deriva por fecha, no se guarda).
-  { id: 1, clienteId: 1, vehiculoId: 1, fechaInicio: '2026-09-01T10:00:00', fechaFin: '2026-09-03T10:00:00', precioDiario: 12000, importeTotal: 24000, estado: 'ESTADO_RESERVA_CONFIRMADA', mantenimiento: 'RESULTADO_MANTENIMIENTO_PENDIENTE' },
+  { id: 1, clienteId: 1, vehiculoId: 1, fechaInicio: '2026-09-01T10:00:00', fechaFin: '2026-09-03T10:00:00', precioDiario: 12000, importeTotal: 24000, estado: 'ESTADO_RESERVA_CONFIRMADA', mantenimiento: 'RESULTADO_MANTENIMIENTO_REALIZADO' },
 ];
 let nextId = 2;
 
@@ -37,8 +38,8 @@ const handlers: ServicioAlquileresHandlers = {
     if (ocupado) return cb(grpcError(status.FAILED_PRECONDITION, 'El vehículo ya cuenta con una reserva confirmada en el período indicado'));
     const nueva: Reserva = {
       id: nextId++, clienteId: Number(r.clienteId), vehiculoId: Number(r.vehiculoId), fechaInicio: ini, fechaFin: fin,
-      precioDiario: r.precioDiario, importeTotal: dias(ini, fin) * r.precioDiario, estado: 'ESTADO_RESERVA_CONFIRMADA',
-      mantenimiento: 'RESULTADO_MANTENIMIENTO_PENDIENTE',
+      precioDiario: r.precioDiario, importeTotal: dias(ini, fin) * r.precioDiario, 
+      estado: 'ESTADO_RESERVA_CONFIRMADA', mantenimiento: 'RESULTADO_MANTENIMIENTO_PENDIENTE',
     };
     reservas.push(nueva);
     cb(null, { reserva: nueva });
