@@ -61,6 +61,8 @@ Al arrancar por primera vez, se **siembra automáticamente un usuario administra
 
 El servicio independiente de alquileres implementa `rentar.alquiler.v1.ServicioAlquileres` desde `proto/rentar/alquiler/v1/alquiler.proto` y escucha en el puerto **9093**. Requiere la base `rentar_alquileres`; después de crearla, ejecutar `database/03_alquileres.sql` conectado a esa base. Hibernate valida el esquema al iniciar (`ddl-auto=validate`). La conexión se configura mediante `DB_URL`, `DB_USER` y `DB_PASSWORD` (valores locales por defecto: PostgreSQL en `localhost:5432`, usuario/contraseña `postgres`).
 
+Al confirmar una reserva, `rental-service` publica `reserva.confirmada` en RabbitMQ después del commit. Su componente interno de mantenimiento consume ese evento, registra la solicitud y publica `mantenimiento.resultado`; el resultado se guarda en la reserva sin bloquear su confirmación. La simulación actual finaliza el mantenimiento como `REALIZADO`. Las colas y bindings están preconfigurados en `rabbitmq/definitions.json`.
+
 Para iniciarlo en Windows:
 
 ```bash

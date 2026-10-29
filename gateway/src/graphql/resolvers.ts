@@ -188,6 +188,7 @@ export const rootValue = {
             precioDiario: x.precioDiario.toFixed(2),
             importeTotal: x.importeTotal.toFixed(2),
             estado: x.estado,
+            mantenimiento: x.mantenimiento,
           };
         });
     },

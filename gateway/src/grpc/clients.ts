@@ -2,7 +2,7 @@ import * as grpc from '@grpc/grpc-js';
 import { config } from '../config';
 import { proto } from './loader';
 import { aProto, deProto } from '../dominio';
-import type { TipoVehiculo, EstadoVehiculo, EstadoReserva, EstadoHistorial } from '../dominio';
+import type { TipoVehiculo, EstadoVehiculo, EstadoReserva, EstadoHistorial, ResultadoMantenimiento } from '../dominio';
 
 
 // vehiculos
@@ -148,11 +148,18 @@ export const clientes = {
 };
 
 // ---------- reservas ----------
-export type ReservaGw = Omit<Reserva__Output, 'estado'> & { estado: EstadoReserva };
+export type ReservaGw = Omit<Reserva__Output, 'estado' | 'mantenimiento'> & {
+  estado: EstadoReserva;
+  mantenimiento: ResultadoMantenimiento;
+};
 export type HistorialGw = Omit<HistorialAlquiler__Output, 'estado'> & { estado: EstadoHistorial };
 const reservaGw = (r: Reserva__Output | null | undefined): ReservaGw => {
   const x = r as Reserva__Output;
-  return { ...x, estado: deProto.estadoReserva(x.estado) };
+  return {
+    ...x,
+    estado: deProto.estadoReserva(x.estado),
+    mantenimiento: deProto.resultadoMantenimiento(x.mantenimiento),
+  };
 };
 
 const aClient = new proto.rentar.alquiler.v1.ServicioAlquileres(config.alquilerAddr, creds);

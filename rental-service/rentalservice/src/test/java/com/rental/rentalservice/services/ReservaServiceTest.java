@@ -1,10 +1,13 @@
 package com.rental.rentalservice.services;
 
 import com.rental.rentalservice.entities.EstadoReserva;
+import com.rental.rentalservice.entities.ResultadoMantenimiento;
 import com.rental.rentalservice.entities.Reserva;
+import com.rental.rentalservice.events.ReservaConfirmada;
 import com.rental.rentalservice.repositories.ReservaRepository;
 import io.grpc.Status;
 import io.grpc.StatusRuntimeException;
+import org.springframework.context.ApplicationEventPublisher;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -26,13 +29,20 @@ class ReservaServiceTest {
     @Mock
     private ReservaRepository reservaRepository;
 
+    @Mock
+    private ApplicationEventPublisher eventPublisher;
+
     @InjectMocks
     private ReservaService reservaService;
 
     @Test
     void creaReservaCalculandoDiasCompletosHaciaArriba() {
         when(reservaRepository.existsConfirmedOverlap(eq(20L), any(), any())).thenReturn(false);
-        when(reservaRepository.save(any(Reserva.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        when(reservaRepository.save(any(Reserva.class))).thenAnswer(invocation -> {
+            Reserva reserva = invocation.getArgument(0);
+            reserva.setId(30L);
+            return reserva;
+        });
 
         Reserva reserva = reservaService.crearReserva(
                 10, 20, "2026-10-12T00:00:00", "2026-10-13T01:00:00", 125.50);
@@ -40,6 +50,23 @@ class ReservaServiceTest {
         assertEquals(new BigDecimal("125.50"), reserva.getPrecioDiario());
         assertEquals(new BigDecimal("251.00"), reserva.getImporteTotal());
         assertEquals(EstadoReserva.CONFIRMADA, reserva.getEstado());
+        assertEquals(ResultadoMantenimiento.PENDIENTE, reserva.getResultadoMantenimiento());
+        verify(eventPublisher).publishEvent(new ReservaConfirmada(
+                30, 20, "2026-10-12T00:00:00", "2026-10-13T01:00:00"));
+    }
+
+    @Test
+    void aplicaResultadoDeMantenimientoUnaSolaVez() {
+        Reserva reserva = reservaFutura(30, 10);
+        when(reservaRepository.findById(30L)).thenReturn(Optional.of(reserva));
+
+        reservaService.registrarResultadoMantenimiento(
+                new com.rental.rentalservice.events.MantenimientoResultado(30, 20, "REALIZADO"));
+        reservaService.registrarResultadoMantenimiento(
+                new com.rental.rentalservice.events.MantenimientoResultado(30, 20, "REALIZADO"));
+
+        assertEquals(ResultadoMantenimiento.REALIZADO, reserva.getResultadoMantenimiento());
+        verify(reservaRepository, times(1)).save(reserva);
     }
 
     @Test

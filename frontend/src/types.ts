@@ -7,6 +7,8 @@ export type EstadoVehiculo = 'DISPONIBLE' | 'RESERVADO' | 'EN_ALQUILER'
 
 export const ESTADOS_RESERVA = ['PENDIENTE', 'CONFIRMADA', 'CANCELADA'] as const
 export type EstadoReserva = (typeof ESTADOS_RESERVA)[number]
+export const RESULTADOS_MANTENIMIENTO = ['PENDIENTE', 'REALIZADO', 'NO_REALIZADO'] as const
+export type ResultadoMantenimiento = (typeof RESULTADOS_MANTENIMIENTO)[number]
 
 export interface Vehiculo {
   id: number
@@ -72,6 +74,7 @@ export interface ReservaConsulta {
   precioDiario: string
   importeTotal: string
   estado: EstadoReserva
+  mantenimiento: ResultadoMantenimiento
 }
 
 export interface ReservaFiltro {
@@ -113,6 +116,7 @@ export interface ReservaCreada {
   precioDiario: number
   importeTotal: number
   estado: EstadoReserva
+  mantenimiento: ResultadoMantenimiento
 }
 
 export interface HistorialAlquiler {

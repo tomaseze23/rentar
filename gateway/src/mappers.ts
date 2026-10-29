@@ -42,5 +42,6 @@ export function reservaDto(r: ReservaGw) {
     precioDiario: r.precioDiario,
     importeTotal: r.importeTotal,
     estado: r.estado,
+    mantenimiento: r.mantenimiento,
   };
 }

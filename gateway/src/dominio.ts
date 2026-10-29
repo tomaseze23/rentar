@@ -7,17 +7,20 @@ export type TipoVehiculo = 'SEDAN' | 'SUV' | 'PICKUP' | 'COUPE' | 'HATCHBACK';
 export type EstadoVehiculo = 'DISPONIBLE' | 'RESERVADO' | 'EN_ALQUILER';
 export type EstadoReserva = 'PENDIENTE' | 'CONFIRMADA' | 'CANCELADA';
 export type EstadoHistorial = 'FINALIZADA' | 'CANCELADA';
+export type ResultadoMantenimiento = 'PENDIENTE' | 'REALIZADO' | 'NO_REALIZADO';
 
 const P_TIPO = 'TIPO_VEHICULO_';
 const P_ESTADO_VEHICULO = 'ESTADO_VEHICULO_';
 const P_ESTADO_RESERVA = 'ESTADO_RESERVA_';
 const P_ESTADO_HISTORIAL = 'ESTADO_HISTORIAL_';
+const P_RESULTADO_MANTENIMIENTO = 'RESULTADO_MANTENIMIENTO_';
 
 // Del valor público al valor del .proto (undefined se conserva: filtro ausente).
 export const aProto = {
     tipo: (v?: TipoVehiculo) => (v === undefined ? undefined : `${P_TIPO}${v}`),
     estadoVehiculo: (v: EstadoVehiculo) => `${P_ESTADO_VEHICULO}${v}`,
     estadoReserva: (v?: EstadoReserva) => (v === undefined ? undefined : `${P_ESTADO_RESERVA}${v}`),
+    resultadoMantenimiento: (v: ResultadoMantenimiento) => `${P_RESULTADO_MANTENIMIENTO}${v}`,
 } as const;
 
 // Del valor del .proto al valor público.
@@ -27,4 +30,5 @@ export const deProto = {
     estadoVehiculo: (v: string) => quitar(P_ESTADO_VEHICULO, v) as EstadoVehiculo,
     estadoReserva: (v: string) => quitar(P_ESTADO_RESERVA, v) as EstadoReserva,
     estadoHistorial: (v: string) => quitar(P_ESTADO_HISTORIAL, v) as EstadoHistorial,
+    resultadoMantenimiento: (v: string) => quitar(P_RESULTADO_MANTENIMIENTO, v) as ResultadoMantenimiento,
 } as const;

@@ -39,6 +39,7 @@ const FILTRO_VACIO: FiltroForm = {
 }
 
 const ESTADO_TONE = { PENDIENTE: 'amber', CONFIRMADA: 'green', CANCELADA: 'gray' } as const
+const MANTENIMIENTO_TONE = { PENDIENTE: 'amber', REALIZADO: 'green', NO_REALIZADO: 'red' } as const
 
 function toFiltro(form: FiltroForm): ReservaFiltro {
   const filtro: ReservaFiltro = {}
@@ -210,6 +211,7 @@ export function ReservasPage({ modo }: Props) {
                 <th className="num">Precio diario</th>
                 <th className="num">Importe total</th>
                 <th>Estado</th>
+                <th>Mantenimiento</th>
                 {!esAdmin && <th />}
               </tr>
             </thead>
@@ -225,6 +227,11 @@ export function ReservasPage({ modo }: Props) {
                   <td className="num">{formatMoney(r.importeTotal)}</td>
                   <td>
                     <Badge tone={ESTADO_TONE[r.estado]}>{r.estado}</Badge>
+                  </td>
+                  <td>
+                    <Badge tone={MANTENIMIENTO_TONE[r.mantenimiento]}>
+                      {r.mantenimiento.replace('_', ' ')}
+                    </Badge>
                   </td>
                   {!esAdmin && (
                     <td className="row-actions">
