@@ -9,6 +9,7 @@ CREATE TABLE IF NOT EXISTS vehiculo (
     precio_diario NUMERIC(12,2),
     estado VARCHAR(30) NOT NULL DEFAULT 'DISPONIBLE',
     activo BOOLEAN NOT NULL DEFAULT TRUE,
+    verificacion VARCHAR(30) NOT NULL DEFAULT 'PENDIENTE',
 
     CONSTRAINT ck_vehiculo_tipo
         CHECK (
@@ -20,6 +21,9 @@ CREATE TABLE IF NOT EXISTS vehiculo (
         CHECK (
             estado IN ('DISPONIBLE', 'RESERVADO', 'EN_ALQUILER')
         ),
+
+    CONSTRAINT ck_vehiculo_verificacion
+        CHECK (verificacion IN ('PENDIENTE', 'VALIDADO', 'ROBADO')),
 
     CONSTRAINT ck_vehiculo_precio
         CHECK (

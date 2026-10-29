@@ -68,6 +68,9 @@ public class VehiculoGrpcServiceImpl extends ServicioVehiculosGrpc.ServicioVehic
         } catch (VehiculoYaActivoException e) {
             responseObserver.onError(Status.FAILED_PRECONDITION.withDescription(e.getMessage()).asRuntimeException());
         }
+          catch (VehiculoInvalidoException e) {
+            responseObserver.onError(Status.FAILED_PRECONDITION.withDescription(e.getMessage()).asRuntimeException());
+        }
     }
 
     @Override
@@ -130,6 +133,9 @@ public class VehiculoGrpcServiceImpl extends ServicioVehiculosGrpc.ServicioVehic
             responseObserver.onError(Status.INVALID_ARGUMENT
                     .withDescription("Estado inválido: " + request.getEstado())
                     .asRuntimeException());
+        }
+        catch (VehiculoInvalidoException e) {
+            responseObserver.onError(Status.FAILED_PRECONDITION.withDescription(e.getMessage()).asRuntimeException());
         }
     }
 

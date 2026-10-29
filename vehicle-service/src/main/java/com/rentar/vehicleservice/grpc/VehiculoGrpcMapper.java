@@ -10,6 +10,7 @@ public class VehiculoGrpcMapper {
     // los enums de dominio no (SEDAN). Se traducen quitando o agregando el prefijo.
     private static final String PREFIJO_TIPO = "TIPO_VEHICULO_";
     private static final String PREFIJO_ESTADO = "ESTADO_VEHICULO_";
+    private static final String PREFIJO_VERIFICACION = "ESTADO_VERIFICACION_";
 
     static TipoVehiculo mapTipo(com.rentar.proto.comun.TipoVehiculo t) {
         if (t == null

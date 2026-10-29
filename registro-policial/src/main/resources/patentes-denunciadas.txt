@@ -1,0 +1,6 @@
+# Registro policial simulado: patentes denunciadas como robadas (una por línea).
+ROB001
+ROB002
+ROB003
+ROB004
+AB999ZZ

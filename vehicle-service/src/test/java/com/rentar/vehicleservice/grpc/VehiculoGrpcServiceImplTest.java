@@ -19,6 +19,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.context.ApplicationEventPublisher;
 
 import java.util.List;
 import java.util.Optional;
@@ -37,6 +38,9 @@ class VehiculoGrpcServiceImplTest {
 
     @Mock
     private VehiculoRepository repository;
+
+    @Mock
+    private ApplicationEventPublisher eventos;
 
     @AfterEach
     void cerrar() {
@@ -86,7 +90,7 @@ class VehiculoGrpcServiceImplTest {
         v.setActivo(true);
         when(repository.findById(1L)).thenReturn(Optional.of(v));
 
-        var stub = levantarServidorYObtenerStub(new VehiculoDomainService(repository));
+        var stub = levantarServidorYObtenerStub(new VehiculoDomainService(repository,eventos));
 
         var response = stub.consultarVehiculo(
                 SolicitudConsultarVehiculo.newBuilder().setId(1L).build()).getVehiculo();
@@ -99,7 +103,8 @@ class VehiculoGrpcServiceImplTest {
     void consultarVehiculo_idInexistente_devuelveNotFound() throws Exception {
         when(repository.findById(999L)).thenReturn(Optional.empty());
 
-        var stub = levantarServidorYObtenerStub(new VehiculoDomainService(repository));
+        var stub = levantarServidorYObtenerStub(new VehiculoDomainService(repository,eventos));
+
 
         StatusRuntimeException ex = assertThrows(StatusRuntimeException.class, () ->
                 stub.consultarVehiculo(SolicitudConsultarVehiculo.newBuilder().setId(999L).build()));
@@ -114,7 +119,7 @@ class VehiculoGrpcServiceImplTest {
                 vehiculo(2L, "BBB222", TipoVehiculo.SUV),
                 vehiculo(3L, "CCC333", TipoVehiculo.SUV)));
 
-        var stub = levantarServidorYObtenerStub(new VehiculoDomainService(repository));
+        var stub = levantarServidorYObtenerStub(new VehiculoDomainService(repository,eventos));
 
         var suvs = stub.consultarVehiculos(SolicitudConsultarVehiculos.newBuilder()
                 .setTipoVehiculo(com.rentar.proto.comun.TipoVehiculo.TIPO_VEHICULO_SUV).build());
