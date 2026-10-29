@@ -118,7 +118,8 @@ export const rootValue = {
         vehiculosOcupadosIds: ocupados.vehiculoIds,
       });
 
-      return r.vehiculos.map((v) => ({
+            // Hito 3: un vehículo ROBADO no se ofrece (el Vehicle Service ya lo excluye; esto es defensa en profundidad).
+      return r.vehiculos.filter((v) => v.verificacion !== 'ROBADO').map((v) =>({
         id: v.id, patente: v.patente, marca: v.marca, modelo: v.modelo, anio: v.anio,
         color: v.color ?? null, tipoVehiculo: v.tipoVehiculo, precioDiario: v.precioDiario,
       }));
@@ -188,6 +189,7 @@ export const rootValue = {
             precioDiario: x.precioDiario.toFixed(2),
             importeTotal: x.importeTotal.toFixed(2),
             estado: x.estado,
+            mantenimiento: x.mantenimiento,
           };
         });
     },

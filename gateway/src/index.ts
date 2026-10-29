@@ -2,6 +2,7 @@ import express, { NextFunction, Request, Response } from 'express';
 import { config } from './config';
 import { errorBody, HttpError,toHttpError } from './errors';
 import { vehiculosRouter } from './routes/vehiculos';
+import { vehiculosExternosRouter } from './routes/vehiculosExternos';
 import { authRouter } from './routes/auth';
 import { autenticar, requerirRol } from './auth';
 import { clientesRouter } from './routes/clientes';
@@ -24,6 +25,7 @@ app.get('/health', (_req, res) => {
 //REST
 app.use('/api/auth', authRouter);
 app.use('/api/vehiculos', autenticar, requerirRol('ADMINISTRADOR'), vehiculosRouter);
+app.use('/api/vehiculos-externos', autenticar, requerirRol('CLIENTE', 'ADMINISTRADOR'), vehiculosExternosRouter);
 app.use('/api/clientes', autenticar, requerirRol('ADMINISTRADOR'), clientesRouter);
 app.use('/api/reservas', autenticar, requerirRol('CLIENTE'), reservasRouter);
 

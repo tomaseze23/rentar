@@ -44,8 +44,24 @@ Para desarrollar sin los servicios reales: `npm run mocks` levanta mocks gRPC de
 | `/api/clientes` (mismas operaciones, `?incluirInactivos`) | ADMINISTRADOR | ABM de clientes |
 | `POST /api/reservas` | CLIENTE | Crear reserva (201) |
 | `DELETE /api/reservas/:id` | CLIENTE | Cancelar reserva propia |
+| `POST /api/vehiculos-externos` | CLIENTE | Proponer incorporar un vehículo propio. Responde **202** con la solicitud en `PENDIENTE`; las validaciones de patente y titularidad son asíncronas (eventos) |
+| `GET /api/vehiculos-externos` (`?clienteId`) | CLIENTE (las propias) / ADMINISTRADOR (todas) | Estado de las solicitudes y de cada validación |
 
-Errores con el formato `{ "timestamp", "status", "message" }`. Mapeo gRPC → HTTP: INVALID_ARGUMENT 400, UNAUTHENTICATED 401, PERMISSION_DENIED 403, NOT_FOUND 404, ALREADY_EXISTS y FAILED_PRECONDITION 409, UNAVAILABLE 503, DEADLINE_EXCEEDED 504. El gateway responde 422 si el cliente o el vehículo están dados de baja al reservar.
+## Incorporación de vehículos externos (Hito 3)
+`POST /api/vehiculos-externos` valida el body (mismos datos que un vehículo), toma el `clienteId` del token, verifica con Clientes que esté activo y le pasa la solicitud a Vehículos (`IncorporarVehiculoExterno`), que la guarda en `PENDIENTE` y responde enseguida (**202**). El gateway no espera las validaciones: el cliente consulta el avance con `GET /api/vehiculos-externos`.
+
+Respuesta: `{ id, clienteId, patente, marca, modelo, anio, color, tipoVehiculo, precioDiario, estado, validacionPatente, validacionTitularidad, vehiculoId }`, con `estado` en `PENDIENTE | RECHAZADA | INCORPORADA` y cada validación en `PENDIENTE | VALIDADO | RECHAZADO`. `vehiculoId` aparece cuando la solicitud queda `INCORPORADA`.
+
+Campos nuevos: los vehículos suman `verificacion` (`PENDIENTE | VALIDADO | ROBADO`) y `propietarioClienteId`; las reservas (REST y GraphQL `ReservaConsulta`) suman `mantenimiento` (`PENDIENTE | REALIZADO | NO_REALIZADO`). Un vehículo `ROBADO` no aparece como disponible y no se puede reservar (422); con verificación `PENDIENTE` sí se puede.
+
+Los valores se informan sin los prefijos del `.proto`: la traducción está en `src/dominio.ts`.
+
+### Mocks del Hito 3 (`npm run mocks`)
+El mock de Vehículos simula el flujo asíncrono: la solicitud nace `PENDIENTE` y a los 3 segundos se resuelve sola. Una patente que empieza con `ROB` se rechaza en la validación de patente, una que empieza con `SIN` en la de titularidad, y cualquier otra queda `INCORPORADA` (y se crea el vehículo). El vehículo `ROB123` ya existe como `ROBADO`.
+
+## Formatos
+
+Errores con el formato `{ "timestamp", "status", "message" }`. Mapeo gRPC → HTTP: INVALID_ARGUMENT 400, UNAUTHENTICATED 401, PERMISSION_DENIED 403, NOT_FOUND 404, ALREADY_EXISTS y FAILED_PRECONDITION 409, UNAVAILABLE 503, DEADLINE_EXCEEDED 504. El gateway responde 422 si el cliente o el vehículo están dados de baja al reservar o si el vehículo figura como ROBADO.
 
 ## GraphQL
 Endpoint `POST /graphql`, con el mismo schema del Hito 1 (`src/graphql/schema.graphqls`). El token es opcional a nivel HTTP; cada operación valida el rol. Los errores se informan en `errors[].extensions.classification`: `UNAUTHORIZED`, `FORBIDDEN`, `NOT_FOUND`, `BAD_REQUEST`, `INTERNAL_ERROR`.
