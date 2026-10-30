@@ -8,6 +8,8 @@ import com.rentar.vehicleservice.exceptions.VehiculoInvalidoException;
 import com.rentar.vehicleservice.exceptions.VehiculoNoEncontradoException;
 import com.rentar.vehicleservice.exceptions.VehiculoYaActivoException;
 import com.rentar.vehicleservice.repositories.VehiculoRepository;
+import com.rentar.vehicleservice.entities.VerificacionVehiculo;
+import com.rentar.vehicleservice.messaging.VehiculoCreado;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -199,5 +201,85 @@ class VehiculoDomainServiceTest {
                 null, null, null, null, null, List.of(1L));
 
         assertTrue(resultado.isEmpty());
+    }
+
+    @Test
+    void crear_quedaPendienteYPublicaElEventoDeVehiculoCreado() {
+        when(repository.existsByPatente("AB123CD")).thenReturn(false);
+        when(repository.save(any(Vehiculo.class))).thenAnswer(inv -> {
+            Vehiculo v = inv.getArgument(0);
+            v.setId(15L);
+            return v;
+        });
+
+        Vehiculo resultado = domainService.crear(nuevoValido());
+
+        assertEquals(VerificacionVehiculo.PENDIENTE, resultado.getVerificacion());
+        verify(eventos).publishEvent(new VehiculoCreado(15L, "AB123CD"));
+    }
+
+    @Test
+    void aplicarVerificacion_robado_marcaRobadoYDaDeBajaElVehiculo() {
+        vehiculoEjemplo.setVerificacion(VerificacionVehiculo.PENDIENTE);
+        when(repository.findById(1L)).thenReturn(Optional.of(vehiculoEjemplo));
+
+        domainService.aplicarVerificacion(1L, VerificacionVehiculo.ROBADO);
+
+        assertEquals(VerificacionVehiculo.ROBADO, vehiculoEjemplo.getVerificacion());
+        assertFalse(vehiculoEjemplo.getActivo());
+        verify(repository).save(vehiculoEjemplo);
+    }
+
+    @Test
+    void aplicarVerificacion_validado_marcaValidadoYSigueActivo() {
+        vehiculoEjemplo.setVerificacion(VerificacionVehiculo.PENDIENTE);
+        when(repository.findById(1L)).thenReturn(Optional.of(vehiculoEjemplo));
+
+        domainService.aplicarVerificacion(1L, VerificacionVehiculo.VALIDADO);
+
+        assertEquals(VerificacionVehiculo.VALIDADO, vehiculoEjemplo.getVerificacion());
+        assertTrue(vehiculoEjemplo.getActivo());
+        verify(repository).save(vehiculoEjemplo);
+    }
+
+    @Test
+    void aplicarVerificacion_robadoEsDefinitivo_unValidadoTardioNoLoLevanta() {
+        vehiculoEjemplo.setVerificacion(VerificacionVehiculo.ROBADO);
+        vehiculoEjemplo.setActivo(false);
+        when(repository.findById(1L)).thenReturn(Optional.of(vehiculoEjemplo));
+
+        domainService.aplicarVerificacion(1L, VerificacionVehiculo.VALIDADO);
+
+        assertEquals(VerificacionVehiculo.ROBADO, vehiculoEjemplo.getVerificacion());
+        verify(repository, never()).save(any());
+    }
+
+    @Test
+    void reactivar_vehiculoRobado_tiraExcepcion() {
+        vehiculoEjemplo.setActivo(false);
+        vehiculoEjemplo.setVerificacion(VerificacionVehiculo.ROBADO);
+        when(repository.findById(1L)).thenReturn(Optional.of(vehiculoEjemplo));
+
+        assertThrows(VehiculoInvalidoException.class, () -> domainService.reactivar(1L));
+        verify(repository, never()).save(any());
+    }
+
+    @Test
+    void consultarDisponibilidadSimple_noOfreceVehiculosRobados() {
+        Vehiculo robado = new Vehiculo();
+        robado.setId(2L);
+        robado.setPatente("ROB001");
+        robado.setMarca("Fiat");
+        robado.setModelo("Cronos");
+        robado.setTipoVehiculo(TipoVehiculo.SEDAN);
+        robado.setPrecioDiario(30000.0);
+        robado.setActivo(true);
+        robado.setVerificacion(VerificacionVehiculo.ROBADO);
+        when(repository.findByActivo(true)).thenReturn(List.of(vehiculoEjemplo, robado));
+
+        List<Vehiculo> resultado = domainService.consultarDisponibilidadSimple(
+                null, null, null, null, null, List.of());
+
+        assertEquals(List.of(1L), resultado.stream().map(Vehiculo::getId).toList());
     }
 }

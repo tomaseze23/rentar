@@ -34,7 +34,7 @@ CREATE TABLE IF NOT EXISTS vehiculo (
         )
 );
 
--- Bases creadas antes del Hito 3 (volumen de Docker existente): agrega la columna si falta.
+-- Bases creadas antes del Hito 3: agrega la columna si falta (si ya existe, no hace nada).
 ALTER TABLE vehiculo ADD COLUMN IF NOT EXISTS verificacion VARCHAR(30) NOT NULL DEFAULT 'PENDIENTE';
 ALTER TABLE vehiculo ADD COLUMN IF NOT EXISTS propietario_cliente_id BIGINT;
 
