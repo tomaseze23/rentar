@@ -32,6 +32,9 @@ CREATE TABLE IF NOT EXISTS vehiculo (
         )
 );
 
+-- Bases creadas antes del Hito 3 (volumen de Docker existente): agrega la columna si falta.
+ALTER TABLE vehiculo ADD COLUMN IF NOT EXISTS verificacion VARCHAR(30) NOT NULL DEFAULT 'PENDIENTE';
+
 CREATE INDEX IF NOT EXISTS idx_vehiculo_activo
     ON vehiculo(activo);
 

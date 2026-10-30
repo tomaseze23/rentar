@@ -50,6 +50,9 @@ public class VehiculoGrpcMapper {
         if (v.getEstado() != null) {
             builder.setEstado(com.rentar.proto.comun.EstadoVehiculo.valueOf(PREFIJO_ESTADO + v.getEstado().name()));
         }
+        if (v.getVerificacion() != null) {
+            builder.setVerificacion(com.rentar.proto.vehiculo.EstadoVerificacion.valueOf(PREFIJO_VERIFICACION + v.getVerificacion().name()));
+        }
         return builder.build();
     }
 
