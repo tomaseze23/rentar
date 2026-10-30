@@ -15,6 +15,7 @@ COPY --from=build /app/gateway/node_modules ./gateway/node_modules
 COPY --from=build /app/gateway/dist ./gateway/dist
 COPY --from=build /app/gateway/src/graphql ./gateway/src/graphql
 COPY --from=build /app/gateway/package.json ./gateway/package.json
+COPY --from=build /app/gateway/openapi.yaml ./gateway/openapi.yaml
 WORKDIR /app/gateway
 ENV NODE_ENV=production
 EXPOSE 8080
