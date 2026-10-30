@@ -208,7 +208,7 @@ sequenceDiagram
 ```
 
 #### `mantenimiento.resultado`
-- Publica: el componente de mantenimiento de **Rental Service**, al terminar de procesar.
+- Publica: el componente de mantenimiento de **Rental Service**, al terminar de procesar. El mantenimiento necesita anticipación: si la reserva empieza en menos de 24 horas desde que se procesa (`MANTENIMIENTO_ANTICIPACION_HORAS`), no hay tiempo de hacerlo y el resultado es `NO_REALIZADO`; si no, `REALIZADO`.
 - Consume: **Rental Service**, que guarda el resultado asociado a la reserva.
 
 ```json
