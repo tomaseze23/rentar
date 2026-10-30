@@ -1,0 +1,10 @@
+# Registro de titularidad simulado: PATENTE;DOCUMENTO del titular (una por línea).
+# Los documentos son los de los clientes de database/04_datos_prueba_clientes.sql.
+AA100AA;30111222
+AA200AA;30111222
+AB300CD;30333444
+AC400DE;28999111
+AD500EF;35222333
+AE600FG;37444555
+# Patentes cuyo titular NO es ningún cliente de prueba (sirven para probar el RECHAZADO)
+AF700GH;99999999

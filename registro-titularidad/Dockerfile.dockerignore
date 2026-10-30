@@ -1,0 +1,5 @@
+# Contexto de build = raíz del repo: sólo se necesitan el proto y el servicio
+*
+!proto/rentar/cliente/v1/cliente.proto
+!registro-titularidad/pom.xml
+!registro-titularidad/src/main/**
