@@ -30,7 +30,7 @@ Catálogo de eventos, convenciones y guía del entorno. Es el contrato que compa
 | `rental-service.mantenimiento.resultado` | `mantenimiento.resultado` | Rental Service | Componente de mantenimiento de Rental Service |
 | `rentar.dlq` | (fanout desde `rentar.eventos.dlx`) | nadie, se revisa a mano | — |
 
-> Componentes nuevos de este hito: **Registro policial**, **Registro de titularidad** y **Mantenimiento**. Para el flujo de reservas, el componente de mantenimiento está implementado dentro de `rental-service` y consume/publica mediante las colas existentes; no requiere un microservicio adicional. El **Registro de titularidad** es el servicio `registro-titularidad` (carpeta propia, con Dockerfile y entrada en el Compose).
+> Componentes nuevos de este hito: **Registro policial**, **Registro de titularidad** y **Mantenimiento**. Para el flujo de reservas, el componente de mantenimiento está implementado dentro de `rental-service` y consume/publica mediante las colas existentes; no requiere un microservicio adicional. El **Registro policial** (`registro-policial`) y el **Registro de titularidad** (`registro-titularidad`) son servicios propios, con Dockerfile y entrada en el Compose. El Registro policial atiende las dos colas que consume: la verificación de vehículos nuevos y la validación de patente de los vehículos externos.
 >
 > Si algún equipo necesita otra cola o binding, **se agrega en `definitions.json`** (PR chico) y se actualiza esta tabla. No se declaran colas desde el código: si el código redeclara una cola con otros argumentos, RabbitMQ la rechaza (`PRECONDITION_FAILED`).
 
@@ -336,7 +336,7 @@ Para publicar después del commit: `@TransactionalEventListener(phase = AFTER_CO
 
 ### Agregar un componente nuevo al Compose
 
-Plantilla para los componentes que todavía no están en el Compose (por ejemplo Registro policial) (se agrega cuando el servicio tenga su `Dockerfile`):
+Plantilla para un componente nuevo (se agrega cuando el servicio tenga su `Dockerfile`):
 
 ```yaml
   mantenimiento:

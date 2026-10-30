@@ -33,7 +33,7 @@ class VehiculoRepositoryTest {
     @Test
     void laEntidadCoincideConElEsquemaYGuardaElPrecio() {
         Vehiculo v = new Vehiculo(null, "AB123CD", "Fiat", "Cronos", "2024", null,
-                TipoVehiculo.SEDAN, 15000.5, EstadoVehiculo.DISPONIBLE, true, VerificacionVehiculo.VALIDADO);
+                TipoVehiculo.SEDAN, 15000.5, EstadoVehiculo.DISPONIBLE, true, VerificacionVehiculo.VALIDADO, null);
 
         Vehiculo guardado = repository.saveAndFlush(v);
 

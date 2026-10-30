@@ -45,6 +45,29 @@ public class VehiculoDomainService {
         return guardado;
     }
 
+    /** Normaliza y valida los datos de un vehículo con las mismas reglas que el alta (patente, año, precio, etc.). */
+    public void normalizarYValidar(Vehiculo vehiculo) {
+        normalizarCampos(vehiculo);
+        validarCamposObligatorios(vehiculo);
+    }
+
+    /**
+     * Crea el vehículo de una solicitud de incorporación externa ya aprobada: queda DISPONIBLE, a nombre del cliente
+     * y con verificación VALIDADO, porque su patente ya la validó el registro policial en el mismo flujo.
+     */
+    public Vehiculo incorporarExterno(Vehiculo vehiculo, Long propietarioClienteId) {
+        normalizarYValidar(vehiculo);
+        if (repository.existsByPatente(vehiculo.getPatente())) {
+            throw new PatenteDuplicadaException(vehiculo.getPatente());
+        }
+        vehiculo.setId(null);
+        vehiculo.setEstado(EstadoVehiculo.DISPONIBLE);
+        vehiculo.setActivo(true);
+        vehiculo.setVerificacion(VerificacionVehiculo.VALIDADO);
+        vehiculo.setPropietarioClienteId(propietarioClienteId);
+        return repository.save(vehiculo);
+    }
+
     public Vehiculo modificar(Long id, Vehiculo datos) {
         Vehiculo existente = consultar(id);
         datos.setPatente(existente.getPatente());

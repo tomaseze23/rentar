@@ -1,6 +1,7 @@
 package com.rentar.vehicleservice.grpc;
 
 import com.rentar.vehicleservice.entities.EstadoVehiculo;
+import com.rentar.vehicleservice.entities.SolicitudIncorporacion;
 import com.rentar.vehicleservice.entities.TipoVehiculo;
 import com.rentar.vehicleservice.entities.Vehiculo;
 
@@ -11,6 +12,8 @@ public class VehiculoGrpcMapper {
     private static final String PREFIJO_TIPO = "TIPO_VEHICULO_";
     private static final String PREFIJO_ESTADO = "ESTADO_VEHICULO_";
     private static final String PREFIJO_VERIFICACION = "ESTADO_VERIFICACION_";
+    private static final String PREFIJO_SOLICITUD = "ESTADO_SOLICITUD_INCORPORACION_";
+    private static final String PREFIJO_VALIDACION = "RESULTADO_VALIDACION_";
 
     static TipoVehiculo mapTipo(com.rentar.proto.comun.TipoVehiculo t) {
         if (t == null
@@ -53,6 +56,9 @@ public class VehiculoGrpcMapper {
         if (v.getVerificacion() != null) {
             builder.setVerificacion(com.rentar.proto.vehiculo.EstadoVerificacion.valueOf(PREFIJO_VERIFICACION + v.getVerificacion().name()));
         }
+        if (v.getPropietarioClienteId() != null) {
+            builder.setPropietarioClienteId(v.getPropietarioClienteId());
+        }
         return builder.build();
     }
 
@@ -77,5 +83,40 @@ public class VehiculoGrpcMapper {
         v.setTipoVehiculo(mapTipo(r.getTipoVehiculo()));
         v.setPrecioDiario(r.getPrecioDiario());
         return v;
+    }
+
+    public static com.rentar.proto.vehiculo.IncorporacionExterna toProto(SolicitudIncorporacion s) {
+        var builder = com.rentar.proto.vehiculo.IncorporacionExterna.newBuilder()
+                .setId(s.getId())
+                .setClienteId(s.getClienteId())
+                .setPatente(s.getPatente())
+                .setMarca(s.getMarca())
+                .setModelo(s.getModelo())
+                .setAnio(s.getAnio())
+                .setTipoVehiculo(com.rentar.proto.comun.TipoVehiculo.valueOf(PREFIJO_TIPO + s.getTipoVehiculo().name()))
+                .setPrecioDiario(s.getPrecioDiario())
+                .setEstado(com.rentar.proto.vehiculo.EstadoSolicitudIncorporacion.valueOf(PREFIJO_SOLICITUD + s.getEstado().name()))
+                .setValidacionPatente(com.rentar.proto.vehiculo.ResultadoValidacion.valueOf(PREFIJO_VALIDACION + s.getValidacionPatente().name()))
+                .setValidacionTitularidad(com.rentar.proto.vehiculo.ResultadoValidacion.valueOf(PREFIJO_VALIDACION + s.getValidacionTitularidad().name()));
+        if (s.getColor() != null) {
+            builder.setColor(s.getColor());
+        }
+        if (s.getVehiculoId() != null) {
+            builder.setVehiculoId(s.getVehiculoId());
+        }
+        return builder.build();
+    }
+
+    public static SolicitudIncorporacion fromIncorporarRequest(com.rentar.proto.vehiculo.SolicitudIncorporarVehiculoExterno r) {
+        SolicitudIncorporacion s = new SolicitudIncorporacion();
+        s.setClienteId(r.getClienteId());
+        s.setPatente(r.getPatente());
+        s.setMarca(r.getMarca());
+        s.setModelo(r.getModelo());
+        s.setAnio(r.getAnio());
+        s.setColor(r.hasColor() ? r.getColor() : null);
+        s.setTipoVehiculo(mapTipo(r.getTipoVehiculo()));
+        s.setPrecioDiario(r.getPrecioDiario());
+        return s;
     }
 }

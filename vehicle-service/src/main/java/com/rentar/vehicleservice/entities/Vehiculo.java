@@ -47,4 +47,7 @@ public class Vehiculo {
     @Column(nullable = false)
     private VerificacionVehiculo verificacion = VerificacionVehiculo.VALIDADO;
 
+    // Cliente dueño si el vehículo entró por incorporación externa; null para la flota de Rentar
+    private Long propietarioClienteId;
+
 }

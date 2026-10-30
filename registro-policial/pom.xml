@@ -18,6 +18,8 @@
 
     <properties>
         <java.version>17</java.version>
+        <!-- Byte Buddy (lo usa Mockito) reciente: el de Spring Boot 3.3.4 no puede mockear clases en JDK 25+ -->
+        <byte-buddy.version>1.18.14</byte-buddy.version>
     </properties>
 
     <dependencies>
