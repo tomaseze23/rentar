@@ -9,6 +9,7 @@ CREATE TABLE IF NOT EXISTS vehiculo (
     precio_diario NUMERIC(12,2),
     estado VARCHAR(30) NOT NULL DEFAULT 'DISPONIBLE',
     activo BOOLEAN NOT NULL DEFAULT TRUE,
+    verificacion VARCHAR(30) NOT NULL DEFAULT 'PENDIENTE',
 
     CONSTRAINT ck_vehiculo_tipo
         CHECK (
@@ -21,12 +22,18 @@ CREATE TABLE IF NOT EXISTS vehiculo (
             estado IN ('DISPONIBLE', 'RESERVADO', 'EN_ALQUILER')
         ),
 
+    CONSTRAINT ck_vehiculo_verificacion
+        CHECK (verificacion IN ('PENDIENTE', 'VALIDADO', 'ROBADO')),
+
     CONSTRAINT ck_vehiculo_precio
         CHECK (
             precio_diario IS NULL
             OR precio_diario >= 0
         )
 );
+
+-- Bases creadas antes del Hito 3: agrega la columna si falta (si ya existe, no hace nada).
+ALTER TABLE vehiculo ADD COLUMN IF NOT EXISTS verificacion VARCHAR(30) NOT NULL DEFAULT 'PENDIENTE';
 
 CREATE INDEX IF NOT EXISTS idx_vehiculo_activo
     ON vehiculo(activo);

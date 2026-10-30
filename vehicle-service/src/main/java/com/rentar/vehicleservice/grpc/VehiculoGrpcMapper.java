@@ -10,6 +10,7 @@ public class VehiculoGrpcMapper {
     // los enums de dominio no (SEDAN). Se traducen quitando o agregando el prefijo.
     private static final String PREFIJO_TIPO = "TIPO_VEHICULO_";
     private static final String PREFIJO_ESTADO = "ESTADO_VEHICULO_";
+    private static final String PREFIJO_VERIFICACION = "ESTADO_VERIFICACION_";
 
     static TipoVehiculo mapTipo(com.rentar.proto.comun.TipoVehiculo t) {
         if (t == null
@@ -48,6 +49,9 @@ public class VehiculoGrpcMapper {
         }
         if (v.getEstado() != null) {
             builder.setEstado(com.rentar.proto.comun.EstadoVehiculo.valueOf(PREFIJO_ESTADO + v.getEstado().name()));
+        }
+        if (v.getVerificacion() != null) {
+            builder.setVerificacion(com.rentar.proto.vehiculo.EstadoVerificacion.valueOf(PREFIJO_VERIFICACION + v.getVerificacion().name()));
         }
         return builder.build();
     }

@@ -9,6 +9,10 @@ import com.rentar.vehicleservice.exceptions.VehiculoNoEncontradoException;
 import com.rentar.vehicleservice.exceptions.VehiculoYaActivoException;
 import com.rentar.vehicleservice.repositories.VehiculoRepository;
 import org.springframework.stereotype.Service;
+import com.rentar.vehicleservice.entities.VerificacionVehiculo;
+import com.rentar.vehicleservice.messaging.VehiculoCreado;
+import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 
@@ -16,9 +20,11 @@ import java.util.List;
 public class VehiculoDomainService {
 
     private final VehiculoRepository repository;
+    private final ApplicationEventPublisher eventos;
 
-    public VehiculoDomainService(VehiculoRepository repository) {
+    public VehiculoDomainService(VehiculoRepository repository, ApplicationEventPublisher eventos) {
         this.repository = repository;
+        this.eventos = eventos;
     }
 
     public Vehiculo crear(Vehiculo vehiculo) {
@@ -32,7 +38,11 @@ public class VehiculoDomainService {
         vehiculo.setId(null);
         vehiculo.setEstado(EstadoVehiculo.DISPONIBLE);
         vehiculo.setActivo(true);
-        return repository.save(vehiculo);
+        vehiculo.setVerificacion(VerificacionVehiculo.PENDIENTE);
+        Vehiculo guardado = repository.save(vehiculo);
+
+        eventos.publishEvent(new VehiculoCreado(guardado.getId(), guardado.getPatente()));
+        return guardado;
     }
 
     public Vehiculo modificar(Long id, Vehiculo datos) {
@@ -75,6 +85,9 @@ public class VehiculoDomainService {
 
     public void actualizarEstado(Long id, EstadoVehiculo nuevoEstado) {
         Vehiculo v = consultar(id);
+        if (v.getVerificacion() == VerificacionVehiculo.ROBADO) {
+            throw new VehiculoInvalidoException("El vehículo está denunciado como robado");
+        }
         v.setEstado(nuevoEstado);
         repository.save(v);
     }
@@ -129,6 +142,9 @@ public class VehiculoDomainService {
         if (Boolean.TRUE.equals(v.getActivo())) {
             throw new VehiculoYaActivoException(id);
         }
+        if (v.getVerificacion() == VerificacionVehiculo.ROBADO) {
+            throw new VehiculoInvalidoException("El vehículo está denunciado como robado y no puede reactivarse");
+        }
         v.setActivo(true);
         return repository.save(v);
     }
@@ -141,7 +157,7 @@ public class VehiculoDomainService {
             throw new VehiculoInvalidoException("precioMin no puede ser mayor a precioMax");
         }
 
-        return repository.findByActivo(true).stream()
+        return repository.findByActivo(true).stream().filter(v -> v.getVerificacion() != VerificacionVehiculo.ROBADO)
                 .filter(v -> tipoVehiculo == null || v.getTipoVehiculo().name().equals(tipoVehiculo))
                 .filter(v -> marca == null || v.getMarca().toLowerCase().contains(marca.toLowerCase()))
                 .filter(v -> modelo == null || v.getModelo().toLowerCase().contains(modelo.toLowerCase()))
@@ -149,6 +165,19 @@ public class VehiculoDomainService {
                 .filter(v -> precioMax == null || v.getPrecioDiario() <= precioMax)
                 .filter(v -> idsOcupados == null || !idsOcupados.contains(v.getId()))
                 .toList();
+    }
+
+    @Transactional
+    public void aplicarVerificacion(Long id, VerificacionVehiculo resultado) {
+        Vehiculo v = consultar(id);
+        if (v.getVerificacion() == resultado || v.getVerificacion() == VerificacionVehiculo.ROBADO) {
+            return; // idempotente, y ROBADO es definitivo
+        }
+        v.setVerificacion(resultado);
+        if (resultado == VerificacionVehiculo.ROBADO) {
+            v.setActivo(false); // inhabilitado para nuevas operaciones
+        }
+        repository.save(v);
     }
 
 
