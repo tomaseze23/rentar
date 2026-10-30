@@ -7,6 +7,7 @@ import com.rentar.vehicleservice.entities.EstadoVehiculo;
 import com.rentar.vehicleservice.entities.TipoVehiculo;
 import com.rentar.vehicleservice.entities.Vehiculo;
 import com.rentar.vehicleservice.repositories.VehiculoRepository;
+import com.rentar.vehicleservice.services.IncorporacionService;
 import com.rentar.vehicleservice.services.VehiculoDomainService;
 import io.grpc.ManagedChannel;
 import io.grpc.Status;
@@ -42,6 +43,9 @@ class VehiculoGrpcServiceImplTest {
     @Mock
     private ApplicationEventPublisher eventos;
 
+    @Mock
+    private IncorporacionService incorporacionService;
+
     @AfterEach
     void cerrar() {
         if (channel != null) channel.shutdownNow();
@@ -68,7 +72,7 @@ class VehiculoGrpcServiceImplTest {
         String serverName = InProcessServerBuilder.generateName();
         server = InProcessServerBuilder.forName(serverName)
                 .directExecutor()
-                .addService(new VehiculoGrpcServiceImpl(domainService))
+                .addService(new VehiculoGrpcServiceImpl(domainService, incorporacionService))
                 .build().start();
 
         channel = InProcessChannelBuilder.forName(serverName).directExecutor().build();
@@ -131,5 +135,41 @@ class VehiculoGrpcServiceImplTest {
 
         var sinFiltros = stub.consultarVehiculos(SolicitudConsultarVehiculos.getDefaultInstance());
         assertEquals(3, sinFiltros.getVehiculosCount());
+    }
+
+    @Test
+    void incorporarVehiculoExterno_devuelveLaSolicitudPendiente() throws Exception {
+        when(incorporacionService.incorporar(org.mockito.ArgumentMatchers.any())).thenAnswer(inv -> {
+            com.rentar.vehicleservice.entities.SolicitudIncorporacion s = inv.getArgument(0);
+            s.setId(50L);
+            s.setEstado(com.rentar.vehicleservice.entities.EstadoSolicitudIncorporacion.PENDIENTE);
+            s.setValidacionPatente(com.rentar.vehicleservice.entities.ResultadoValidacion.PENDIENTE);
+            s.setValidacionTitularidad(com.rentar.vehicleservice.entities.ResultadoValidacion.PENDIENTE);
+            return s;
+        });
+        var stub = levantarServidorYObtenerStub(new VehiculoDomainService(repository, eventos));
+
+        var solicitud = stub.incorporarVehiculoExterno(com.rentar.proto.vehiculo.SolicitudIncorporarVehiculoExterno.newBuilder()
+                .setClienteId(1L).setPatente("AA100AA").setMarca("Fiat").setModelo("Cronos").setAnio("2022")
+                .setTipoVehiculo(com.rentar.proto.comun.TipoVehiculo.TIPO_VEHICULO_SEDAN).setPrecioDiario(30000)
+                .build()).getSolicitud();
+
+        assertEquals(50L, solicitud.getId());
+        assertEquals("ESTADO_SOLICITUD_INCORPORACION_PENDIENTE", solicitud.getEstado().name());
+        assertEquals("RESULTADO_VALIDACION_PENDIENTE", solicitud.getValidacionPatente().name());
+        assertEquals(false, solicitud.hasVehiculoId());
+    }
+
+    @Test
+    void incorporarVehiculoExterno_patenteRepetida_devuelveAlreadyExists() throws Exception {
+        when(incorporacionService.incorporar(org.mockito.ArgumentMatchers.any()))
+                .thenThrow(new com.rentar.vehicleservice.exceptions.SolicitudEnCursoException("AA100AA"));
+        var stub = levantarServidorYObtenerStub(new VehiculoDomainService(repository, eventos));
+
+        StatusRuntimeException ex = assertThrows(StatusRuntimeException.class, () ->
+                stub.incorporarVehiculoExterno(com.rentar.proto.vehiculo.SolicitudIncorporarVehiculoExterno.newBuilder()
+                        .setClienteId(1L).setPatente("AA100AA").build()));
+
+        assertEquals(Status.Code.ALREADY_EXISTS, ex.getStatus().getCode());
     }
 }
