@@ -92,6 +92,19 @@ services:
       rabbitmq:
         condition: service_healthy
 
+  registro-policial:
+    build:
+      context: .
+      dockerfile: registro-policial/Dockerfile
+    environment:
+      RABBITMQ_HOST: rabbitmq
+      RABBITMQ_PORT: 5672
+      RABBITMQ_USER: guest
+      RABBITMQ_PASSWORD: guest
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+
   registro-titularidad:
     build:
       context: .

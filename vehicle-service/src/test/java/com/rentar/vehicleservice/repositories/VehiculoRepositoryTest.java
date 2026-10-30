@@ -3,6 +3,7 @@ package com.rentar.vehicleservice.repositories;
 import com.rentar.vehicleservice.entities.EstadoVehiculo;
 import com.rentar.vehicleservice.entities.TipoVehiculo;
 import com.rentar.vehicleservice.entities.Vehiculo;
+import com.rentar.vehicleservice.entities.VerificacionVehiculo;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.jdbc.AutoConfigureTestDatabase;
@@ -32,7 +33,7 @@ class VehiculoRepositoryTest {
     @Test
     void laEntidadCoincideConElEsquemaYGuardaElPrecio() {
         Vehiculo v = new Vehiculo(null, "AB123CD", "Fiat", "Cronos", "2024", null,
-                TipoVehiculo.SEDAN, 15000.5, EstadoVehiculo.DISPONIBLE, true);
+                TipoVehiculo.SEDAN, 15000.5, EstadoVehiculo.DISPONIBLE, true, VerificacionVehiculo.VALIDADO);
 
         Vehiculo guardado = repository.saveAndFlush(v);
 
