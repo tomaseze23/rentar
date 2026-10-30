@@ -77,6 +77,18 @@ En Mac/Linux:
 
 También se puede levantar junto a PostgreSQL y el Gateway con `docker compose up --build`; el servicio queda disponible en `localhost:9093` y el Gateway lo contacta por `rental-service:9093`.
 
+## Registro de titularidad
+
+Componente `registro-titularidad` del flujo de incorporación de vehículos externos. Consume `vehiculos.externos.registrados` (cola `titularidad.vehiculos.externos.registrados`), obtiene el documento del cliente del Customer Service por gRPC (`ConsultarCliente`), lo compara con el titular de la patente en su registro y publica `vehiculos.externos.validacion.titularidad` con resultado `VALIDADO` o `RECHAZADO`. No expone puertos ni tiene base de datos.
+
+El registro simula el de la propiedad automotor y se carga de `registro-titularidad/src/main/resources/titulares.txt` (líneas `PATENTE;DOCUMENTO`); se puede apuntar a otro archivo con la propiedad `registro.titulares`. Los titulares cargados son clientes de `database/04_datos_prueba_clientes.sql` (por ejemplo `AA100AA` es de Ana Pérez, documento `30111222`); `AF700GH` tiene un titular que no es cliente y sirve para probar el rechazo.
+
+Se levanta con `docker compose up --build`. Para correrlo fuera de Docker necesita RabbitMQ y el Customer Service (`CLIENTE_ADDR`, por defecto `localhost:9092`):
+
+```bash
+mvn -f registro-titularidad/pom.xml spring-boot:run
+```
+
 ## Autenticación y roles
 
 La API está protegida: salvo el login y la documentación, **todos los endpoints requieren un token JWT**.

@@ -92,6 +92,22 @@ services:
       rabbitmq:
         condition: service_healthy
 
+  registro-titularidad:
+    build:
+      context: .
+      dockerfile: registro-titularidad/Dockerfile
+    environment:
+      CLIENTE_ADDR: customer-service:9092
+      RABBITMQ_HOST: rabbitmq
+      RABBITMQ_PORT: 5672
+      RABBITMQ_USER: guest
+      RABBITMQ_PASSWORD: guest
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+      customer-service:
+        condition: service_started
+
   gateway:
     build:
       context: .
