@@ -42,4 +42,9 @@ public class Vehiculo {
     private EstadoVehiculo estado;
 
     private Boolean activo;
+
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    private VerificacionVehiculo verificacion = VerificacionVehiculo.VALIDADO;
+
 }
