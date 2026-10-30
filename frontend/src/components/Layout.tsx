@@ -5,6 +5,7 @@ const ADMIN_LINKS = [
   { to: '/admin/vehiculos', label: 'Vehículos' },
   { to: '/admin/clientes', label: 'Clientes' },
   { to: '/admin/reservas', label: 'Reservas' },
+  { to: '/admin/solicitudes', label: 'Solicitudes' },
 ]
 
 const CLIENTE_LINKS = [
