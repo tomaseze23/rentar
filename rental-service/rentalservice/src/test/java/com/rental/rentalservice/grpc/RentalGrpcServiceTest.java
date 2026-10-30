@@ -3,6 +3,8 @@ package com.rental.rentalservice.grpc;
 import com.rentar.proto.alquiler.EstadoHistorial;
 import com.rentar.proto.alquiler.HistorialAlquiler;
 import com.rentar.proto.alquiler.RespuestaConsultarHistorial;
+import com.rentar.proto.alquiler.RespuestaCrearReserva;
+import com.rentar.proto.alquiler.SolicitudCrearReserva;
 import com.rentar.proto.alquiler.SolicitudConsultarHistorial;
 import com.rental.rentalservice.entities.EstadoReserva;
 import com.rental.rentalservice.entities.Reserva;
@@ -32,6 +34,30 @@ class RentalGrpcServiceTest {
 
     @InjectMocks
     private RentalGrpcService grpcService;
+
+    @Test
+    void devuelveElMantenimientoPendienteEnLaReservaCreada() {
+        Reserva reserva = reserva(30L, EstadoReserva.CONFIRMADA,
+                LocalDateTime.of(2026, 10, 12, 10, 0), LocalDateTime.of(2026, 10, 13, 10, 0));
+        when(reservaService.crearReserva(10, 20, "2026-10-12T10:00:00", "2026-10-13T10:00:00", 100))
+                .thenReturn(reserva);
+
+        @SuppressWarnings("unchecked")
+        StreamObserver<RespuestaCrearReserva> observer = mock(StreamObserver.class);
+        grpcService.crearReserva(SolicitudCrearReserva.newBuilder()
+                .setClienteId(10)
+                .setVehiculoId(20)
+                .setPeriodo(com.rentar.proto.comun.Periodo.newBuilder()
+                        .setFechaInicio("2026-10-12T10:00:00")
+                        .setFechaFin("2026-10-13T10:00:00"))
+                .setPrecioDiario(100)
+                .build(), observer);
+
+        ArgumentCaptor<RespuestaCrearReserva> response = ArgumentCaptor.forClass(RespuestaCrearReserva.class);
+        verify(observer).onNext(response.capture());
+        assertEquals(com.rentar.proto.alquiler.ResultadoMantenimiento.RESULTADO_MANTENIMIENTO_PENDIENTE,
+                response.getValue().getReserva().getMantenimiento());
+    }
 
     @Test
     void historialMarcaFinalizadaUnaReservaConfirmadaQueYaTermino() {

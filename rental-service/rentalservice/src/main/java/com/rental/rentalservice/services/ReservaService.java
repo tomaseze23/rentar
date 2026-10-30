@@ -1,8 +1,12 @@
 package com.rental.rentalservice.services;
 
 import com.rental.rentalservice.entities.EstadoReserva;
+import com.rental.rentalservice.entities.ResultadoMantenimiento;
 import com.rental.rentalservice.entities.Reserva;
+import com.rental.rentalservice.events.MantenimientoResultado;
+import com.rental.rentalservice.events.ReservaConfirmada;
 import com.rental.rentalservice.repositories.ReservaRepository;
+import org.springframework.context.ApplicationEventPublisher;
 import io.grpc.Status;
 import io.grpc.StatusRuntimeException;
 import org.springframework.data.jpa.domain.Specification;
@@ -13,16 +17,21 @@ import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.Duration;
 import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
 import java.util.List;
 
 @Service
 public class ReservaService {
 
-    private final ReservaRepository reservaRepository;
+    private static final DateTimeFormatter FORMATO_EVENTO = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss");
 
-    public ReservaService(ReservaRepository reservaRepository) {
+    private final ReservaRepository reservaRepository;
+    private final ApplicationEventPublisher eventPublisher;
+
+    public ReservaService(ReservaRepository reservaRepository, ApplicationEventPublisher eventPublisher) {
         this.reservaRepository = reservaRepository;
+        this.eventPublisher = eventPublisher;
     }
 
     @Transactional
@@ -49,7 +58,40 @@ public class ReservaService {
         reserva.setPrecioDiario(precio);
         reserva.setImporteTotal(precio.multiply(BigDecimal.valueOf(dias)).setScale(2, RoundingMode.HALF_UP));
         reserva.setEstado(EstadoReserva.CONFIRMADA);
-        return reservaRepository.save(reserva);
+        reserva.setResultadoMantenimiento(ResultadoMantenimiento.PENDIENTE);
+        Reserva guardada = reservaRepository.save(reserva);
+        eventPublisher.publishEvent(new ReservaConfirmada(
+                guardada.getId(),
+                guardada.getVehiculoId(),
+                guardada.getFechaInicio().format(FORMATO_EVENTO),
+                guardada.getFechaFin().format(FORMATO_EVENTO)));
+        return guardada;
+    }
+
+    @Transactional
+    public void registrarResultadoMantenimiento(MantenimientoResultado evento) {
+        validarId(evento.reservaId(), "reserva_id");
+        validarId(evento.vehiculoId(), "vehiculo_id");
+        ResultadoMantenimiento resultado;
+        try {
+            resultado = ResultadoMantenimiento.valueOf(evento.resultado());
+        } catch (IllegalArgumentException | NullPointerException exception) {
+            throw status(Status.INVALID_ARGUMENT, "resultado de mantenimiento inválido");
+        }
+        if (resultado == ResultadoMantenimiento.PENDIENTE) {
+            throw status(Status.INVALID_ARGUMENT, "El resultado de mantenimiento no puede ser PENDIENTE");
+        }
+
+        Reserva reserva = obtenerPorId(evento.reservaId());
+        if (!reserva.getVehiculoId().equals(evento.vehiculoId())) {
+            throw status(Status.FAILED_PRECONDITION, "El vehículo no coincide con la reserva");
+        }
+        if (reserva.getResultadoMantenimiento() == ResultadoMantenimiento.PENDIENTE) {
+            reserva.setResultadoMantenimiento(resultado);
+            reservaRepository.save(reserva);
+        } else if (reserva.getResultadoMantenimiento() != resultado) {
+            throw status(Status.FAILED_PRECONDITION, "La reserva ya tiene otro resultado de mantenimiento");
+        }
     }
 
     @Transactional(readOnly = true)

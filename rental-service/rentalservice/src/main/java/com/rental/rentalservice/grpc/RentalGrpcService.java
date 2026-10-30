@@ -158,6 +158,11 @@ public class RentalGrpcService extends ServicioAlquileresGrpc.ServicioAlquileres
                     case CONFIRMADA -> com.rentar.proto.comun.EstadoReserva.ESTADO_RESERVA_CONFIRMADA;
                     case CANCELADA -> com.rentar.proto.comun.EstadoReserva.ESTADO_RESERVA_CANCELADA;
                 })
+                .setMantenimiento(switch (reserva.getResultadoMantenimiento()) {
+                    case PENDIENTE -> ResultadoMantenimiento.RESULTADO_MANTENIMIENTO_PENDIENTE;
+                    case REALIZADO -> ResultadoMantenimiento.RESULTADO_MANTENIMIENTO_REALIZADO;
+                    case NO_REALIZADO -> ResultadoMantenimiento.RESULTADO_MANTENIMIENTO_NO_REALIZADO;
+                })
                 .build();
     }
 

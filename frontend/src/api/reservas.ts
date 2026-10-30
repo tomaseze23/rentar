@@ -13,7 +13,7 @@ const RESERVAS_QUERY = `
   query Reservas($filtro: ReservaFiltro) {
     reservas(filtro: $filtro) {
       id clienteId cliente vehiculoId vehiculo patente
-      fechaInicio fechaFin precioDiario importeTotal estado
+      fechaInicio fechaFin precioDiario importeTotal estado mantenimiento
     }
   }
 `

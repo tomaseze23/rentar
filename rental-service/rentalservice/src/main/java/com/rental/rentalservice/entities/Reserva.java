@@ -43,4 +43,21 @@ public class Reserva {
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
     private EstadoReserva estado;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "resultado_mantenimiento", nullable = false, length = 20)
+    private ResultadoMantenimiento resultadoMantenimiento = ResultadoMantenimiento.PENDIENTE;
+
+    public Reserva(Long id, Long clienteId, Long vehiculoId, LocalDateTime fechaInicio, LocalDateTime fechaFin,
+                   BigDecimal precioDiario, BigDecimal importeTotal, EstadoReserva estado) {
+        this.id = id;
+        this.clienteId = clienteId;
+        this.vehiculoId = vehiculoId;
+        this.fechaInicio = fechaInicio;
+        this.fechaFin = fechaFin;
+        this.precioDiario = precioDiario;
+        this.importeTotal = importeTotal;
+        this.estado = estado;
+        this.resultadoMantenimiento = ResultadoMantenimiento.PENDIENTE;
+    }
 }

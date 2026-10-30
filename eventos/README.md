@@ -26,11 +26,11 @@ Catálogo de eventos, convenciones y guía del entorno. Es el contrato que compa
 | `vehicle-service.vehiculos.externos.validacion.patente` | `vehiculos.externos.validacion.patente` | Vehicle Service | Registro policial |
 | `vehicle-service.vehiculos.externos.validacion.titularidad` | `vehiculos.externos.validacion.titularidad` | Vehicle Service | Registro de titularidad |
 | `vehicle-service.vehiculos.externos.validacion.completada` | `vehiculos.externos.validacion.completada` | Vehicle Service | Vehicle Service |
-| `mantenimiento.reserva.confirmada` | `reserva.confirmada` | Mantenimiento | Rental Service |
-| `rental-service.mantenimiento.resultado` | `mantenimiento.resultado` | Rental Service | Mantenimiento |
+| `mantenimiento.reserva.confirmada` | `reserva.confirmada` | Componente de mantenimiento de Rental Service | Rental Service |
+| `rental-service.mantenimiento.resultado` | `mantenimiento.resultado` | Rental Service | Componente de mantenimiento de Rental Service |
 | `rentar.dlq` | (fanout desde `rentar.eventos.dlx`) | nadie, se revisa a mano | — |
 
-> Componentes nuevos de este hito: **Registro policial**, **Registro de titularidad** y **Mantenimiento**. Los nombres de cola de arriba suponen esos tres nombres de consumidor; si un componente se llama distinto, hay que cambiar el nombre en `definitions.json` y en esta tabla (y nada más).
+> Componentes nuevos de este hito: **Registro policial**, **Registro de titularidad** y **Mantenimiento**. Para el flujo de reservas, el componente de mantenimiento está implementado dentro de `rental-service` y consume/publica mediante las colas existentes; no requiere un microservicio adicional.
 >
 > Si algún equipo necesita otra cola o binding, **se agrega en `definitions.json`** (PR chico) y se actualiza esta tabla. No se declaran colas desde el código: si el código redeclara una cola con otros argumentos, RabbitMQ la rechaza (`PRECONDITION_FAILED`).
 
@@ -196,7 +196,7 @@ sequenceDiagram
 
 #### `reserva.confirmada`
 - Publica: **Rental Service**, después de confirmar la reserva (con la transacción ya confirmada).
-- Consume: **Mantenimiento**, que registra la solicitud de mantenimiento preventivo del vehículo y la procesa.
+- Consume: el componente de mantenimiento de **Rental Service**, que registra la solicitud de mantenimiento preventivo del vehículo y la procesa.
 
 ```json
 {
@@ -208,7 +208,7 @@ sequenceDiagram
 ```
 
 #### `mantenimiento.resultado`
-- Publica: **Mantenimiento**, al terminar de procesar.
+- Publica: el componente de mantenimiento de **Rental Service**, al terminar de procesar.
 - Consume: **Rental Service**, que guarda el resultado asociado a la reserva.
 
 ```json
@@ -220,7 +220,7 @@ sequenceDiagram
     participant GW as Gateway
     participant R as Rental Service
     participant MQ as RabbitMQ
-    participant M as Mantenimiento
+    participant M as Componente de mantenimiento (Rental Service)
     GW->>R: gRPC CrearReserva
     R->>R: guarda la reserva (confirmada)
     R-->>GW: reserva creada (no espera al mantenimiento)
