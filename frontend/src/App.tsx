@@ -6,8 +6,10 @@ import { Login } from './pages/Login'
 import { ReservasPage } from './pages/ReservasPage'
 import { ClientesPage } from './pages/admin/ClientesPage'
 import { VehiculosPage } from './pages/admin/VehiculosPage'
+import { SolicitudesPage } from './pages/admin/SolicitudesPage'
 import { DisponibilidadPage } from './pages/cliente/DisponibilidadPage'
 import { HistorialPage } from './pages/cliente/HistorialPage'
+import { MisVehiculosPage } from './pages/cliente/MisVehiculosPage'
 
 function Home() {
   const { session } = useAuth()
@@ -25,6 +27,7 @@ export function App() {
           <Route path="vehiculos" element={<VehiculosPage />} />
           <Route path="clientes" element={<ClientesPage />} />
           <Route path="reservas" element={<ReservasPage modo="admin" />} />
+          <Route path="solicitudes" element={<SolicitudesPage />} />
         </Route>
       </Route>
 
@@ -34,6 +37,7 @@ export function App() {
           <Route path="reservar" element={<DisponibilidadPage />} />
           <Route path="reservas" element={<ReservasPage modo="cliente" />} />
           <Route path="historial" element={<HistorialPage />} />
+          <Route path="vehiculos" element={<MisVehiculosPage />} />
         </Route>
       </Route>
 
