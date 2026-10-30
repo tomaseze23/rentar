@@ -8,6 +8,7 @@ import { ClientesPage } from './pages/admin/ClientesPage'
 import { VehiculosPage } from './pages/admin/VehiculosPage'
 import { DisponibilidadPage } from './pages/cliente/DisponibilidadPage'
 import { HistorialPage } from './pages/cliente/HistorialPage'
+import { MisVehiculosPage } from './pages/cliente/MisVehiculosPage'
 
 function Home() {
   const { session } = useAuth()
@@ -34,6 +35,7 @@ export function App() {
           <Route path="reservar" element={<DisponibilidadPage />} />
           <Route path="reservas" element={<ReservasPage modo="cliente" />} />
           <Route path="historial" element={<HistorialPage />} />
+          <Route path="vehiculos" element={<MisVehiculosPage />} />
         </Route>
       </Route>
 

@@ -11,6 +11,7 @@ const CLIENTE_LINKS = [
   { to: '/cliente/reservar', label: 'Buscar y reservar' },
   { to: '/cliente/reservas', label: 'Mis reservas' },
   { to: '/cliente/historial', label: 'Historial' },
+  { to: '/cliente/vehiculos', label: 'Mis vehículos' },
 ]
 
 export function Layout() {
