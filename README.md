@@ -61,7 +61,7 @@ Al arrancar por primera vez, se **siembra automáticamente un usuario administra
 
 El servicio independiente de alquileres implementa `rentar.alquiler.v1.ServicioAlquileres` desde `proto/rentar/alquiler/v1/alquiler.proto` y escucha en el puerto **9093**. Requiere la base `rentar_alquileres`; después de crearla, ejecutar `database/03_alquileres.sql` conectado a esa base. Hibernate valida el esquema al iniciar (`ddl-auto=validate`). La conexión se configura mediante `DB_URL`, `DB_USER` y `DB_PASSWORD` (valores locales por defecto: PostgreSQL en `localhost:5432`, usuario/contraseña `postgres`).
 
-Al confirmar una reserva, `rental-service` publica `reserva.confirmada` en RabbitMQ después del commit. Su componente interno de mantenimiento consume ese evento, registra la solicitud y publica `mantenimiento.resultado`; el resultado se guarda en la reserva sin bloquear su confirmación. La simulación actual finaliza el mantenimiento como `REALIZADO`. Las colas y bindings están preconfigurados en `rabbitmq/definitions.json`.
+Al confirmar una reserva, `rental-service` publica `reserva.confirmada` en RabbitMQ después del commit. Su componente interno de mantenimiento consume ese evento, registra la solicitud y publica `mantenimiento.resultado`; el resultado se guarda en la reserva sin bloquear su confirmación. El mantenimiento se hace antes de entregar el vehículo, así que necesita anticipación: si la reserva empieza en menos de 24 horas desde que se procesa el evento, el resultado es `NO_REALIZADO`; si no, `REALIZADO`. Las horas se configuran con `MANTENIMIENTO_ANTICIPACION_HORAS`. Las colas y bindings están preconfigurados en `rabbitmq/definitions.json`.
 
 Para iniciarlo en Windows:
 
@@ -88,6 +88,27 @@ Se levanta con `docker compose up --build`. Para correrlo fuera de Docker necesi
 ```bash
 mvn -f registro-titularidad/pom.xml spring-boot:run
 ```
+
+## Incorporación de vehículos externos
+
+Flujo completo del Hito 3 para que un cliente incorpore un vehículo propio:
+
+1. El cliente llama a `POST /api/vehiculos-externos` (Gateway). El Vehicle Service guarda la solicitud en `PENDIENTE` (tabla `solicitud_incorporacion`), responde enseguida (**202**) y, después del commit, publica `vehiculos.externos.registrados`.
+2. El **Registro policial** valida que la patente no esté denunciada y publica `vehiculos.externos.validacion.patente`; el **Registro de titularidad** valida que el cliente sea el titular y publica `vehiculos.externos.validacion.titularidad`. Cada uno trabaja por su cuenta.
+3. El Vehicle Service guarda cada resultado (pueden llegar en cualquier orden). Si alguno es `RECHAZADO`, la solicitud queda `RECHAZADA`. Si ambos son `VALIDADO`, publica `vehiculos.externos.validacion.completada` una sola vez.
+4. Al consumir `completada`, crea el vehículo `DISPONIBLE` a nombre del cliente (`propietarioClienteId`) y la solicitud queda `INCORPORADA`, con el `vehiculoId` creado.
+
+El avance se consulta con `GET /api/vehiculos-externos`: el cliente ve sus solicitudes y el administrador todas.
+
+Datos de prueba (contraseña de los clientes: `cliente1234`):
+
+| Cliente | Patente | Resultado |
+|---------|---------|-----------|
+| `ana.perez@mail.com` | `AA100AA` o `AA200AA` | `INCORPORADA` |
+| `valentina.diaz@mail.com` | `AB300CD` (titular: Luis Gómez) | `RECHAZADA` por titularidad |
+| `sofia.lopez@mail.com` | `AE600FG` (titular, pero denunciada) | `RECHAZADA` por patente |
+
+Con un volumen de PostgreSQL creado antes del Hito 3, volver a ejecutar `database/02_vehiculos.sql` sobre `rentar_vehiculos`: es idempotente y agrega las columnas y la tabla nuevas.
 
 ## Autenticación y roles
 

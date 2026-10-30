@@ -2,9 +2,11 @@ package com.rentar.vehicleservice.grpc;
 
 import com.rentar.proto.vehiculo.*;
 import com.rentar.vehicleservice.exceptions.PatenteDuplicadaException;
+import com.rentar.vehicleservice.exceptions.SolicitudEnCursoException;
 import com.rentar.vehicleservice.exceptions.VehiculoInvalidoException;
 import com.rentar.vehicleservice.exceptions.VehiculoNoEncontradoException;
 import com.rentar.vehicleservice.exceptions.VehiculoYaActivoException;
+import com.rentar.vehicleservice.services.IncorporacionService;
 import com.rentar.vehicleservice.services.VehiculoDomainService;
 import io.grpc.Status;
 import io.grpc.stub.StreamObserver;
@@ -14,9 +16,11 @@ import net.devh.boot.grpc.server.service.GrpcService;
 public class VehiculoGrpcServiceImpl extends ServicioVehiculosGrpc.ServicioVehiculosImplBase {
 
     private final VehiculoDomainService domainService;
+    private final IncorporacionService incorporacionService;
 
-    public VehiculoGrpcServiceImpl(VehiculoDomainService domainService) {
+    public VehiculoGrpcServiceImpl(VehiculoDomainService domainService, IncorporacionService incorporacionService) {
         this.domainService = domainService;
+        this.incorporacionService = incorporacionService;
     }
 
     @Override
@@ -139,5 +143,32 @@ public class VehiculoGrpcServiceImpl extends ServicioVehiculosGrpc.ServicioVehic
         }
     }
 
+    @Override
+    public void incorporarVehiculoExterno(SolicitudIncorporarVehiculoExterno request,
+                                          StreamObserver<RespuestaIncorporarVehiculoExterno> responseObserver) {
+        try {
+            var solicitud = incorporacionService.incorporar(VehiculoGrpcMapper.fromIncorporarRequest(request));
+            responseObserver.onNext(RespuestaIncorporarVehiculoExterno.newBuilder()
+                    .setSolicitud(VehiculoGrpcMapper.toProto(solicitud)).build());
+            responseObserver.onCompleted();
+        } catch (PatenteDuplicadaException | SolicitudEnCursoException e) {
+            responseObserver.onError(Status.ALREADY_EXISTS.withDescription(e.getMessage()).asRuntimeException());
+        } catch (VehiculoInvalidoException e) {
+            responseObserver.onError(Status.INVALID_ARGUMENT.withDescription(e.getMessage()).asRuntimeException());
+        }
+    }
 
+    @Override
+    public void consultarSolicitudesIncorporacion(SolicitudConsultarSolicitudesIncorporacion request,
+                                                  StreamObserver<RespuestaConsultarSolicitudesIncorporacion> responseObserver) {
+        try {
+            var lista = incorporacionService.listar(request.hasClienteId() ? request.getClienteId() : null);
+            var builder = RespuestaConsultarSolicitudesIncorporacion.newBuilder();
+            lista.forEach(sol -> builder.addSolicitudes(VehiculoGrpcMapper.toProto(sol)));
+            responseObserver.onNext(builder.build());
+            responseObserver.onCompleted();
+        } catch (VehiculoInvalidoException e) {
+            responseObserver.onError(Status.INVALID_ARGUMENT.withDescription(e.getMessage()).asRuntimeException());
+        }
+    }
 }

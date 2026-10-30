@@ -4,3 +4,6 @@ ROB002
 ROB003
 ROB004
 AB999ZZ
+# Patente de un cliente de prueba en el registro de titularidad (Sofía López): sirve para probar una
+# incorporación externa con titularidad VALIDADO y patente RECHAZADO.
+AE600FG
