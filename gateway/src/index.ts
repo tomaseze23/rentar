@@ -10,6 +10,11 @@ import { reservasRouter } from './routes/reservas';
 import { graphqlHandler } from './graphql';
 import cors from 'cors';
 
+import fs from 'fs';
+import path from 'path';
+import swaggerUi from 'swagger-ui-express';
+import { parse } from 'yaml';
+
 const app = express();
 
 app.use(cors({ origin: config.corsOrigin }));
@@ -21,6 +26,15 @@ app.use(express.json());
 app.get('/health', (_req, res) => {
   res.json({ status: 'ok' });
 });
+
+
+// Documentación OpenAPI (Swagger UI en /docs, spec cruda en /openapi.json). Es pública.
+// openapi.yaml vive en la raíz de gateway/ (un nivel arriba de src/ y de dist/).
+const openapi = parse(fs.readFileSync(path.join(__dirname, '..', 'openapi.yaml'), 'utf8'));
+app.get('/openapi.json', (_req, res) => {
+  res.json(openapi);
+});
+app.use('/docs', swaggerUi.serve, swaggerUi.setup(openapi));
 
 //REST
 app.use('/api/auth', authRouter);

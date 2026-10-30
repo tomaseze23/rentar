@@ -1,0 +1,516 @@
+openapi: 3.0.3
+info:
+  title: Rentar - API REST del Gateway
+  version: 3.0.0
+  description: |
+    API REST pública de Rentar (alquiler de vehículos). El gateway valida, autentica (JWT) y orquesta
+    los servicios internos por gRPC (Clientes, Vehículos, Alquileres).
+
+    **Autenticación:** `POST /api/auth/login` devuelve un token. Enviarlo en `Authorization: Bearer <token>`.
+    El `clienteId` de las operaciones de un cliente sale siempre del token, nunca del body.
+
+    **Hito 3:** la incorporación de vehículos externos es asíncrona (responde 202). Las validaciones de
+    patente y titularidad se resuelven por eventos y se consultan con `GET /api/vehiculos-externos`.
+
+    **GraphQL:** además existe `POST /graphql` (consultas y mutaciones del Hito 1).
+servers:
+  - url: http://localhost:8080
+    description: Gateway local (docker compose)
+tags:
+  - name: Auth
+  - name: Vehículos
+    description: ABM de vehículos (ADMINISTRADOR)
+  - name: Vehículos externos
+    description: Incorporación de vehículos de clientes (Hito 3)
+  - name: Clientes
+    description: ABM de clientes (ADMINISTRADOR)
+  - name: Reservas
+    description: Reservas de un cliente (CLIENTE)
+  - name: Sistema
+paths:
+  /health:
+    get:
+      tags: [Sistema]
+      summary: Estado del gateway
+      responses:
+        '200':
+          description: El gateway está activo
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status: { type: string, example: ok }
+  /api/auth/login:
+    post:
+      tags: [Auth]
+      summary: Iniciar sesión
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, password]
+              properties:
+                email: { type: string, format: email, example: cliente@rentar.com }
+                password: { type: string, format: password }
+      responses:
+        '200':
+          description: Token JWT (vence a las 24 h)
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  token: { type: string }
+        '400': { $ref: '#/components/responses/Error400' }
+        '401': { description: 'Email o contraseña incorrectos', content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+  /api/vehiculos:
+    get:
+      tags: [Vehículos]
+      summary: Listar vehículos
+      security: [{ bearerAuth: [] }]
+      description: Rol ADMINISTRADOR.
+      parameters:
+        - { name: activo, in: query, schema: { type: boolean }, description: Filtra por activos / dados de baja }
+        - { name: tipo, in: query, schema: { $ref: '#/components/schemas/TipoVehiculo' } }
+      responses:
+        '200':
+          description: Lista de vehículos
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/Vehiculo' }
+        '400': { $ref: '#/components/responses/Error400' }
+        '401': { $ref: '#/components/responses/Error401' }
+        '403': { $ref: '#/components/responses/Error403' }
+    post:
+      tags: [Vehículos]
+      summary: Crear vehículo
+      security: [{ bearerAuth: [] }]
+      description: Rol ADMINISTRADOR. La patente es obligatoria y única.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/VehiculoEntrada' }
+      responses:
+        '201':
+          description: Vehículo creado
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Vehiculo' }
+        '400': { $ref: '#/components/responses/Error400' }
+        '401': { $ref: '#/components/responses/Error401' }
+        '403': { $ref: '#/components/responses/Error403' }
+        '409': { $ref: '#/components/responses/Error409' }
+  /api/vehiculos/{id}:
+    parameters:
+      - { $ref: '#/components/parameters/Id' }
+    get:
+      tags: [Vehículos]
+      summary: Consultar un vehículo
+      security: [{ bearerAuth: [] }]
+      responses:
+        '200':
+          description: El vehículo
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Vehiculo' }
+        '400': { $ref: '#/components/responses/Error400' }
+        '401': { $ref: '#/components/responses/Error401' }
+        '403': { $ref: '#/components/responses/Error403' }
+        '404': { $ref: '#/components/responses/Error404' }
+    put:
+      tags: [Vehículos]
+      summary: Modificar un vehículo
+      security: [{ bearerAuth: [] }]
+      description: La patente no se puede modificar; si viene, debe coincidir con la registrada.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/VehiculoEntrada' }
+      responses:
+        '200':
+          description: Vehículo actualizado
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Vehiculo' }
+        '400': { $ref: '#/components/responses/Error400' }
+        '401': { $ref: '#/components/responses/Error401' }
+        '403': { $ref: '#/components/responses/Error403' }
+        '404': { $ref: '#/components/responses/Error404' }
+    delete:
+      tags: [Vehículos]
+      summary: Dar de baja un vehículo (baja lógica)
+      security: [{ bearerAuth: [] }]
+      responses:
+        '204': { description: Vehículo dado de baja }
+        '400': { $ref: '#/components/responses/Error400' }
+        '401': { $ref: '#/components/responses/Error401' }
+        '403': { $ref: '#/components/responses/Error403' }
+        '404': { $ref: '#/components/responses/Error404' }
+  /api/vehiculos/{id}/reactivar:
+    patch:
+      tags: [Vehículos]
+      summary: Reactivar un vehículo dado de baja
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { $ref: '#/components/parameters/Id' }
+      responses:
+        '200':
+          description: Vehículo reactivado
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Vehiculo' }
+        '400': { $ref: '#/components/responses/Error400' }
+        '401': { $ref: '#/components/responses/Error401' }
+        '403': { $ref: '#/components/responses/Error403' }
+        '404': { $ref: '#/components/responses/Error404' }
+  /api/vehiculos-externos:
+    post:
+      tags: [Vehículos externos]
+      summary: Proponer la incorporación de un vehículo propio
+      security: [{ bearerAuth: [] }]
+      description: |
+        Rol CLIENTE. Vehículos guarda la solicitud en `PENDIENTE` y responde enseguida (**202**).
+        Las validaciones de patente (registro policial) y de titularidad son asíncronas, por eventos.
+        Si la patente figura como robada o el titular no coincide, la solicitud queda `RECHAZADA`;
+        si ambas validaciones dan `VALIDADO`, queda `INCORPORADA` y aparece `vehiculoId`.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/VehiculoEntrada' }
+      responses:
+        '202':
+          description: Solicitud aceptada (validaciones pendientes)
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/SolicitudIncorporacion' }
+        '400': { $ref: '#/components/responses/Error400' }
+        '401': { $ref: '#/components/responses/Error401' }
+        '403': { $ref: '#/components/responses/Error403' }
+        '404': { $ref: '#/components/responses/Error404' }
+        '409': { $ref: '#/components/responses/Error409' }
+        '422': { $ref: '#/components/responses/Error422' }
+    get:
+      tags: [Vehículos externos]
+      summary: Consultar solicitudes de incorporación
+      security: [{ bearerAuth: [] }]
+      description: CLIENTE ve solo las propias. ADMINISTRADOR ve todas y puede filtrar por `clienteId`.
+      parameters:
+        - { name: clienteId, in: query, schema: { type: integer, format: int64 }, description: Solo para ADMINISTRADOR }
+      responses:
+        '200':
+          description: Solicitudes y avance de cada validación
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/SolicitudIncorporacion' }
+        '400': { $ref: '#/components/responses/Error400' }
+        '401': { $ref: '#/components/responses/Error401' }
+        '403': { $ref: '#/components/responses/Error403' }
+  /api/clientes:
+    get:
+      tags: [Clientes]
+      summary: Listar clientes
+      security: [{ bearerAuth: [] }]
+      description: Rol ADMINISTRADOR.
+      parameters:
+        - { name: incluirInactivos, in: query, schema: { type: boolean, default: false } }
+      responses:
+        '200':
+          description: Lista de clientes
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/Cliente' }
+        '401': { $ref: '#/components/responses/Error401' }
+        '403': { $ref: '#/components/responses/Error403' }
+    post:
+      tags: [Clientes]
+      summary: Crear cliente
+      security: [{ bearerAuth: [] }]
+      description: Crea también el usuario para que pueda iniciar sesión.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ClienteAlta' }
+      responses:
+        '201':
+          description: Cliente creado
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Cliente' }
+        '400': { $ref: '#/components/responses/Error400' }
+        '401': { $ref: '#/components/responses/Error401' }
+        '403': { $ref: '#/components/responses/Error403' }
+        '409': { $ref: '#/components/responses/Error409' }
+  /api/clientes/{id}:
+    parameters:
+      - { $ref: '#/components/parameters/Id' }
+    get:
+      tags: [Clientes]
+      summary: Consultar un cliente
+      security: [{ bearerAuth: [] }]
+      responses:
+        '200':
+          description: El cliente
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Cliente' }
+        '400': { $ref: '#/components/responses/Error400' }
+        '401': { $ref: '#/components/responses/Error401' }
+        '403': { $ref: '#/components/responses/Error403' }
+        '404': { $ref: '#/components/responses/Error404' }
+    put:
+      tags: [Clientes]
+      summary: Modificar un cliente
+      security: [{ bearerAuth: [] }]
+      description: Email y documento no se modifican.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ClienteModificacion' }
+      responses:
+        '200':
+          description: Cliente actualizado
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Cliente' }
+        '400': { $ref: '#/components/responses/Error400' }
+        '401': { $ref: '#/components/responses/Error401' }
+        '403': { $ref: '#/components/responses/Error403' }
+        '404': { $ref: '#/components/responses/Error404' }
+    delete:
+      tags: [Clientes]
+      summary: Dar de baja un cliente (baja lógica)
+      security: [{ bearerAuth: [] }]
+      responses:
+        '204': { description: Cliente dado de baja }
+        '400': { $ref: '#/components/responses/Error400' }
+        '401': { $ref: '#/components/responses/Error401' }
+        '403': { $ref: '#/components/responses/Error403' }
+        '404': { $ref: '#/components/responses/Error404' }
+  /api/clientes/{id}/reactivar:
+    patch:
+      tags: [Clientes]
+      summary: Reactivar un cliente dado de baja
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { $ref: '#/components/parameters/Id' }
+      responses:
+        '200':
+          description: Cliente reactivado
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Cliente' }
+        '400': { $ref: '#/components/responses/Error400' }
+        '401': { $ref: '#/components/responses/Error401' }
+        '403': { $ref: '#/components/responses/Error403' }
+        '404': { $ref: '#/components/responses/Error404' }
+  /api/reservas:
+    post:
+      tags: [Reservas]
+      summary: Crear una reserva
+      security: [{ bearerAuth: [] }]
+      description: |
+        Rol CLIENTE. Verifica que el cliente y el vehículo estén activos, que el vehículo no figure
+        como `ROBADO` (Hito 3) y que no haya solapamiento de fechas. El importe se calcula con el precio
+        diario del vehículo. El resultado del mantenimiento (`mantenimiento`) llega después, de forma
+        asíncrona, y la reserva no lo espera.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ReservaEntrada' }
+      responses:
+        '201':
+          description: Reserva creada
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Reserva' }
+        '400': { $ref: '#/components/responses/Error400' }
+        '401': { $ref: '#/components/responses/Error401' }
+        '403': { $ref: '#/components/responses/Error403' }
+        '404': { $ref: '#/components/responses/Error404' }
+        '409': { $ref: '#/components/responses/Error409' }
+        '422': { $ref: '#/components/responses/Error422' }
+  /api/reservas/{id}:
+    delete:
+      tags: [Reservas]
+      summary: Cancelar una reserva propia
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { $ref: '#/components/parameters/Id' }
+      responses:
+        '200':
+          description: La reserva cancelada
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Reserva' }
+        '400': { $ref: '#/components/responses/Error400' }
+        '401': { $ref: '#/components/responses/Error401' }
+        '403': { $ref: '#/components/responses/Error403' }
+        '404': { $ref: '#/components/responses/Error404' }
+        '409': { $ref: '#/components/responses/Error409' }
+  /graphql:
+    post:
+      tags: [Sistema]
+      summary: Endpoint GraphQL
+      description: |
+        Mismo schema del Hito 1 (`src/graphql/schema.graphqls`). El token es opcional a nivel HTTP; cada
+        operación valida el rol. Los errores se informan en `errors[].extensions.classification`.
+      security: [{}, { bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [query]
+              properties:
+                query: { type: string, example: '{ vehiculosDisponibles { id patente } }' }
+                variables: { type: object, additionalProperties: true }
+                operationName: { type: string }
+      responses:
+        '200':
+          description: Resultado GraphQL (los errores van dentro de `errors`)
+          content:
+            application/json:
+              schema: { type: object, additionalProperties: true }
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  parameters:
+    Id:
+      name: id
+      in: path
+      required: true
+      schema: { type: integer, format: int64 }
+  responses:
+    Error400: { description: Datos inválidos, content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+    Error401: { description: 'Falta el token o es inválido / expirado', content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+    Error403: { description: El rol no alcanza para esta acción, content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+    Error404: { description: No existe el recurso, content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+    Error409: { description: 'Conflicto (patente repetida, fechas solapadas, estado que no lo permite)', content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+    Error422: { description: 'Regla de negocio (cliente o vehículo dado de baja, vehículo ROBADO)', content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+  schemas:
+    Error:
+      type: object
+      properties:
+        timestamp: { type: string, format: date-time }
+        status: { type: integer, example: 400 }
+        message: { type: string, example: La patente es obligatoria }
+    TipoVehiculo:
+      type: string
+      enum: [SEDAN, SUV, PICKUP, COUPE, HATCHBACK]
+    VehiculoEntrada:
+      type: object
+      required: [marca, modelo, anio, tipoVehiculo, precioDiario]
+      properties:
+        patente: { type: string, maxLength: 10, pattern: '^[A-Za-z0-9 ]+$', description: 'Obligatoria al crear o proponer. No se modifica.', example: AB123CD }
+        marca: { type: string, example: Ford }
+        modelo: { type: string, example: Fiesta }
+        anio: { type: string, pattern: '^\d{4}$', example: '2021' }
+        color: { type: string, example: Rojo }
+        tipoVehiculo: { $ref: '#/components/schemas/TipoVehiculo' }
+        precioDiario: { type: number, exclusiveMinimum: true, minimum: 0, example: 35000 }
+    Vehiculo:
+      type: object
+      properties:
+        id: { type: integer, format: int64 }
+        patente: { type: string }
+        marca: { type: string }
+        modelo: { type: string }
+        anio: { type: string }
+        color: { type: string, nullable: true }
+        tipoVehiculo: { $ref: '#/components/schemas/TipoVehiculo' }
+        precioDiario: { type: number }
+        estado: { type: string, enum: [DISPONIBLE, RESERVADO, EN_ALQUILER] }
+        activo: { type: boolean }
+        verificacion:
+          type: string
+          enum: [PENDIENTE, VALIDADO, ROBADO]
+          description: Resultado de la verificación de la patente (Hito 3). ROBADO inhabilita el vehículo; PENDIENTE sigue siendo reservable.
+        propietarioClienteId: { type: integer, format: int64, nullable: true, description: Solo vehículos externos }
+    SolicitudIncorporacion:
+      type: object
+      properties:
+        id: { type: integer, format: int64 }
+        clienteId: { type: integer, format: int64 }
+        patente: { type: string }
+        marca: { type: string }
+        modelo: { type: string }
+        anio: { type: string }
+        color: { type: string, nullable: true }
+        tipoVehiculo: { $ref: '#/components/schemas/TipoVehiculo' }
+        precioDiario: { type: number }
+        estado: { type: string, enum: [PENDIENTE, RECHAZADA, INCORPORADA] }
+        validacionPatente: { type: string, enum: [PENDIENTE, VALIDADO, RECHAZADO] }
+        validacionTitularidad: { type: string, enum: [PENDIENTE, VALIDADO, RECHAZADO] }
+        vehiculoId: { type: integer, format: int64, nullable: true, description: Presente cuando la solicitud queda INCORPORADA }
+    ClienteAlta:
+      type: object
+      required: [email, password, documento, nombre, apellido]
+      properties:
+        email: { type: string, format: email }
+        password: { type: string, format: password }
+        documento: { type: string, example: '30123456' }
+        nombre: { type: string }
+        apellido: { type: string }
+        telefono: { type: string }
+        fechaNacimiento: { type: string, format: date, example: '1990-05-17' }
+    ClienteModificacion:
+      type: object
+      required: [nombre, apellido]
+      properties:
+        nombre: { type: string }
+        apellido: { type: string }
+        telefono: { type: string }
+        fechaNacimiento: { type: string, format: date }
+    Cliente:
+      type: object
+      properties:
+        id: { type: integer, format: int64 }
+        usuarioId: { type: integer, format: int64 }
+        email: { type: string, format: email }
+        documento: { type: string }
+        nombre: { type: string }
+        apellido: { type: string }
+        telefono: { type: string, nullable: true }
+        fechaNacimiento: { type: string, format: date, nullable: true }
+        activo: { type: boolean }
+    ReservaEntrada:
+      type: object
+      required: [vehiculoId, fechaInicio, fechaFin]
+      properties:
+        vehiculoId: { type: integer, format: int64, example: 3 }
+        fechaInicio: { type: string, example: '2026-11-10T10:00', description: 'yyyy-MM-ddTHH:mm[:ss], hora local, debe ser futura' }
+        fechaFin: { type: string, example: '2026-11-13T10:00', description: Posterior a fechaInicio }
+    Reserva:
+      type: object
+      properties:
+        id: { type: integer, format: int64 }
+        clienteId: { type: integer, format: int64 }
+        vehiculoId: { type: integer, format: int64 }
+        fechaInicio: { type: string }
+        fechaFin: { type: string }
+        precioDiario: { type: number }
+        importeTotal: { type: number }
+        estado: { type: string, enum: [PENDIENTE, CONFIRMADA, CANCELADA] }
+        mantenimiento:
+          type: string
+          enum: [PENDIENTE, REALIZADO, NO_REALIZADO]
+          description: Resultado del mantenimiento (Hito 3), asíncrono

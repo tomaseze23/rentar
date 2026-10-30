@@ -14,6 +14,7 @@ npm run dev        # desarrollo, recarga automática
 npm run build && npm start   # producción
 ```
 Para desarrollar sin los servicios reales: `npm run mocks` levanta mocks gRPC de los tres servicios en los puertos 9091, 9092 y 9093.
+Con el gateway levantado, la documentación está en http://localhost:8080/docs.
 
 ## Configuración (variables de entorno)
 | Variable | Default | Descripción |
@@ -46,6 +47,14 @@ Para desarrollar sin los servicios reales: `npm run mocks` levanta mocks gRPC de
 | `DELETE /api/reservas/:id` | CLIENTE | Cancelar reserva propia |
 | `POST /api/vehiculos-externos` | CLIENTE | Proponer incorporar un vehículo propio. Responde **202** con la solicitud en `PENDIENTE`; las validaciones de patente y titularidad son asíncronas (eventos) |
 | `GET /api/vehiculos-externos` (`?clienteId`) | CLIENTE (las propias) / ADMINISTRADOR (todas) | Estado de las solicitudes y de cada validación |
+
+## Documentación de la API (Swagger / OpenAPI)
+La API REST está documentada con OpenAPI 3 en `openapi.yaml` (en la raíz de `gateway/`). El gateway la sirve en:
+
+- **`/docs`**: Swagger UI interactivo (con el botón **Authorize** para probar con token).
+- **`/openapi.json`**: la especificación en JSON.
+
+Ambas rutas son públicas. Para probar un endpoint protegido: `POST /api/auth/login`, copiar el `token` de la respuesta, tocar **Authorize** y pegarlo. Si cambia un endpoint, hay que actualizar `openapi.yaml`.
 
 ## Incorporación de vehículos externos (Hito 3)
 `POST /api/vehiculos-externos` valida el body (mismos datos que un vehículo), toma el `clienteId` del token, verifica con Clientes que esté activo y le pasa la solicitud a Vehículos (`IncorporarVehiculoExterno`), que la guarda en `PENDIENTE` y responde enseguida (**202**). El gateway no espera las validaciones: el cliente consulta el avance con `GET /api/vehiculos-externos`.
