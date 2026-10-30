@@ -3,7 +3,7 @@ import { reservasApi } from '../../api/reservas'
 import { vehiculosApi } from '../../api/vehiculos'
 import { Alert, Badge, ConfirmDialog, Field, Modal, errorMessage } from '../../components/ui'
 import { formatMoney } from '../../format'
-import { TIPOS_VEHICULO, type TipoVehiculo, type Vehiculo, type VehiculoInput } from '../../types'
+import { TIPOS_VEHICULO, type TipoVehiculo, type VerificacionVehiculo, type Vehiculo, type VehiculoInput } from '../../types'
 
 type FiltroActivo = 'todos' | 'activos' | 'inactivos'
 
@@ -28,6 +28,12 @@ const FORM_VACIO: FormState = {
 }
 
 const ESTADO_TONE = { DISPONIBLE: 'green', RESERVADO: 'amber', EN_ALQUILER: 'blue' } as const
+
+const VERIFICACION_TONE: Record<VerificacionVehiculo, 'green' | 'amber' | 'red'> = {
+  VALIDADO: 'green',
+  PENDIENTE: 'amber',
+  ROBADO: 'red',
+}
 
 function toForm(v: Vehiculo): FormState {
   return {
@@ -157,6 +163,8 @@ export function VehiculosPage() {
                 <th>Tipo</th>
                 <th className="num">Precio diario</th>
                 <th>Estado</th>
+                <th>Verificación</th>
+                <th>Propietario</th>
                 <th>Baja</th>
                 <th />
               </tr>
@@ -173,6 +181,8 @@ export function VehiculosPage() {
                   <td>{v.tipoVehiculo ?? '—'}</td>
                   <td className="num">{formatMoney(v.precioDiario)}</td>
                   <td>{v.estado ? <Badge tone={ESTADO_TONE[v.estado]}>{v.estado.replace('_', ' ')}</Badge> : '—'}</td>
+                  <td>{v.verificacion ? <Badge tone={VERIFICACION_TONE[v.verificacion]}>{v.verificacion}</Badge> : '—'}</td>
+                  <td>{v.propietarioClienteId ? `Cliente #${v.propietarioClienteId}` : 'Flota Rentar'}</td>
                   <td>{v.activo === false ? <Badge tone="gray">Inactivo</Badge> : <Badge tone="green">Activo</Badge>}</td>
                   <td className="row-actions">
                     <button type="button" className="btn small" onClick={() => setEditando(v)}>
