@@ -10,6 +10,9 @@ export type EstadoReserva = (typeof ESTADOS_RESERVA)[number]
 export const RESULTADOS_MANTENIMIENTO = ['PENDIENTE', 'REALIZADO', 'NO_REALIZADO'] as const
 export type ResultadoMantenimiento = (typeof RESULTADOS_MANTENIMIENTO)[number]
 
+export type VerificacionVehiculo = 'PENDIENTE' | 'VALIDADO' | 'ROBADO'
+export type EstadoSolicitud = 'PENDIENTE' | 'RECHAZADA' | 'INCORPORADA'
+export type ResultadoValidacion = 'PENDIENTE' | 'VALIDADO' | 'RECHAZADO'
 export interface Vehiculo {
   id: number
   patente: string
@@ -21,6 +24,8 @@ export interface Vehiculo {
   precioDiario: number | null
   estado: EstadoVehiculo | null
   activo: boolean | null
+  verificacion: VerificacionVehiculo | null
+  propietarioClienteId: number | null
 }
 
 export interface VehiculoInput {
@@ -128,4 +133,20 @@ export interface HistorialAlquiler {
   cantidadDias: number
   importeTotal: string
   estado: 'FINALIZADA' | 'CANCELADA'
+}
+
+export interface SolicitudIncorporacion {
+  id: number
+  clienteId: number
+  patente: string
+  marca: string
+  modelo: string
+  anio: string
+  color: string | null
+  tipoVehiculo: TipoVehiculo | null
+  precioDiario: number | null
+  estado: EstadoSolicitud
+  validacionPatente: ResultadoValidacion
+  validacionTitularidad: ResultadoValidacion
+  vehiculoId: number | null
 }

@@ -5,12 +5,14 @@ const ADMIN_LINKS = [
   { to: '/admin/vehiculos', label: 'Vehículos' },
   { to: '/admin/clientes', label: 'Clientes' },
   { to: '/admin/reservas', label: 'Reservas' },
+  { to: '/admin/solicitudes', label: 'Solicitudes' },
 ]
 
 const CLIENTE_LINKS = [
   { to: '/cliente/reservar', label: 'Buscar y reservar' },
   { to: '/cliente/reservas', label: 'Mis reservas' },
   { to: '/cliente/historial', label: 'Historial' },
+  { to: '/cliente/vehiculos', label: 'Mis vehículos' },
 ]
 
 export function Layout() {
